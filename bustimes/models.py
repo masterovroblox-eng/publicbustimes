@@ -47,6 +47,11 @@ class Version(models.Model):
     url = models.URLField(null=True, blank=True)
     current = models.BooleanField(default=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=("source", "start_date", "end_date")),
+        ]
+
     def __str__(self):
         return self.name
 
@@ -85,7 +90,11 @@ class Route(models.Model):
         unique_together = ("source", "code")
         indexes = [
             models.Index(fields=("start_date", "end_date")),
-            models.Index(fields=("source", "service_code")),
+            models.Index(
+                fields=("source", "service_code"),
+                condition=Q(service__isnull=False),
+                name="route_source_service_code",
+            ),
             models.Index(Upper("line_name"), name="route_line_name"),
         ]
 
@@ -320,13 +329,19 @@ class Calendar(models.Model):
 
 class CalendarDate(models.Model):
     calendar = models.ForeignKey(Calendar, models.CASCADE)
-    start_date = models.DateField(db_index=True)
-    end_date = models.DateField(null=True, blank=True, db_index=True)
-    operation = models.BooleanField(db_index=True)
-    special = models.BooleanField(default=False, db_index=True)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    operation = models.BooleanField()
+    special = models.BooleanField(default=False)
     summary = models.CharField(max_length=255, blank=True)
 
     contains = Calendar.contains
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["calendar", "operation", "special"]),
+            models.Index(fields=["calendar", "start_date", "end_date", "operation"]),
+        ]
 
     def __str__(self):
         string = str(self.start_date)
@@ -495,7 +510,18 @@ class StopTime(models.Model):
 
     class Meta:
         ordering = ("id",)
-        indexes = [models.Index(fields=["stop", "departure"])]
+        indexes = [
+            models.Index(
+                fields=["stop", "departure"],
+                include=["trip"],
+                condition=Q(pick_up=True),
+                name="stoptime_stop_dep_covering",
+            ),
+            models.Index(
+                fields=["trip", "id"],
+                name="stoptime_trip_id",
+            ),
+        ]
 
     def __str__(self):
         return format_timedelta(self.arrival_or_departure())
