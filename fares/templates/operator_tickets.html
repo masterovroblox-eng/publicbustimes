@@ -17,7 +17,7 @@ A wider range (singles, returns etc.) may be available from your driver.</p>
 
         {% for category in grouping.categories %}
 
-            <a href="tickets/{{ category.id }}" class="ticket">
+            <a href="{% url 'operator_ticket' operator.slug category.id %}" class="ticket">
                 <h3>{{ category.title }}</h3>
 
                 {% if category.description.strip %}

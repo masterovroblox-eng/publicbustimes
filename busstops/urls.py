@@ -86,7 +86,11 @@ urlpatterns = [
         name="operator_detail",
     ),
     path("operators/<slug>/tickets", mytrip.operator_tickets, name="operator_tickets"),
-    path("operators/<slug>/tickets/<uuid:id>", mytrip.operator_ticket),
+    path(
+        "operators/<slug>/tickets/<uuid:id>",
+        mytrip.operator_ticket,
+        name="operator_ticket",
+    ),
     path(
         "services/<int:service_id>.json",
         views.service_map_data,
