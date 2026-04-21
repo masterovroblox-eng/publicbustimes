@@ -21,9 +21,10 @@ class RegistrationTest(TransactionTestCase):
     def test_registration(self, mocked_validate):
         dummy_uuid = "b4fcbc02-1920-4d0d-b07b-756db0cb2cd0"
 
+        # invite code not created yet - no registration
         response = self.client.get(f"/accounts/register/?invite_code={dummy_uuid}")
-        self.assertContains(response, "Email address")
-        self.assertContains(response, dummy_uuid)
+        self.assertNotContains(response, "Email address")
+        self.assertNotContains(response, dummy_uuid)
 
         # no invite code
         with self.assertNumQueries(1):
@@ -44,6 +45,10 @@ class RegistrationTest(TransactionTestCase):
             invitation.get_absolute_url(),
             f"/accounts/register/?invite_code={dummy_uuid}",
         )
+
+        response = self.client.get(f"/accounts/register/?invite_code={dummy_uuid}")
+        self.assertContains(response, "Email address")
+        self.assertContains(response, dummy_uuid)
 
         # create new account successfully:
         with self.assertNumQueries(3):

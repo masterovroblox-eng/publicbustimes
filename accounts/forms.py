@@ -19,10 +19,14 @@ from .models import Invitation
 User = get_user_model()
 
 
+def invite_code_is_valid(code):
+    return Invitation.objects.filter(uuid=code, expires_at__gt=Now()).exists()
+
+
 class InviteCodeField(UUIDField):
     def validate(self, value):
         super().validate(value)
-        if not Invitation.objects.filter(uuid=value, expires_at__gt=Now()).exists():
+        if not invite_code_is_valid(value):
             raise ValidationError("That invite code is not valid or has expired")
 
 
