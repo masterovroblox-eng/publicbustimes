@@ -397,6 +397,12 @@ class VehiclesTests(TestCase):
         response = self.client.get("/admin/vehicles/vehicle/?duplicate=reg")
         self.assertContains(response, '2 results (<a href="?">6 total</a>')
 
+        response = self.client.get("/admin/vehicles/vehicle/?duplicate=code")
+        self.assertContains(response, '0 results (<a href="?">6 total</a>')
+
+        response = self.client.get("/admin/vehicles/vehicle/?duplicate=fleet_code")
+        self.assertContains(response, '0 results (<a href="?">6 total</a>')
+
         response = self.client.get("/admin/vehicles/vehicle/?duplicate=operator")
         self.assertContains(response, '0 results (<a href="?">6 total</a>')
 
@@ -414,6 +420,28 @@ class VehiclesTests(TestCase):
         self.assertFalse(merged.withdrawn)
         self.assertEqual(merged.id, duplicate_1.id)
         self.assertEqual("none-60", merged.vehiclecode_set.get().code)
+
+        self.client.post(
+            "/admin/vehicles/vehicle/",
+            {
+                "action": "lock",
+                "_selected_action": [merged.id],
+            },
+        )
+        self.client.post(
+            "/admin/vehicles/vehicle/",
+            {
+                "action": "unlock",
+                "_selected_action": [merged.id],
+            },
+        )
+
+    def test_vehiclejourneys_admin(self):
+        self.client.force_login(self.staff_user)
+
+        # list nothing journeys if no filters have been selected
+        response = self.client.get("/admin/vehicles/vehiclejourney/")
+        self.assertContains(response, "0 vehicle journeys")
 
     def test_livery_admin(self):
         self.client.force_login(self.staff_user)
@@ -591,6 +619,10 @@ https://www.flickr.com/photos/goodwinjoshua/51046126023/ blah""",
             '<td class="field-pending">'
             f'<a href="/admin/vehicles/vehiclerevision/?user={self.staff_user.id}&pending=True">1</a></td>',
         )
+
+        response = self.client.get("/admin/vehicles/vehiclerevision/")
+        self.assertContains(response, "1 vehicle revision")
+        self.assertContains(response, ": josh<")
 
         response = self.client.get(
             "/admin/vehicles/vehiclerevision/?change=changes__reg"
