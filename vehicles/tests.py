@@ -388,25 +388,32 @@ class VehiclesTests(TestCase):
 
         # test merging 2 vehicles:
 
-        duplicate_1 = Vehicle.objects.create(reg="SA60TWP", code="60")
+        duplicate_1 = Vehicle.objects.create(reg="SA60TWP", code="60", withdrawn=True)
         duplicate_2 = Vehicle.objects.create(reg="SA60TWP", code="SA60TWP")
+        duplicate_3 = Vehicle.objects.create(code="TEST")
 
-        self.assertEqual(Vehicle.objects.count(), 5)
+        self.assertEqual(Vehicle.objects.count(), 6)
 
         response = self.client.get("/admin/vehicles/vehicle/?duplicate=reg")
-        self.assertContains(response, '2 results (<a href="?">5 total</a>')
+        self.assertContains(response, '2 results (<a href="?">6 total</a>')
 
         response = self.client.get("/admin/vehicles/vehicle/?duplicate=operator")
-        self.assertContains(response, '0 results (<a href="?">5 total</a>')
+        self.assertContains(response, '0 results (<a href="?">6 total</a>')
 
         self.client.post(
             "/admin/vehicles/vehicle/",
             {
                 "action": "deduplicate",
-                "_selected_action": [duplicate_1.id, duplicate_2.id],
+                "_selected_action": [duplicate_1.id, duplicate_2.id, duplicate_3.id],
             },
         )
-        self.assertEqual(Vehicle.objects.count(), 4)
+        self.assertEqual(Vehicle.objects.count(), 5)
+        merged = Vehicle.objects.get(reg="SA60TWP")
+        self.assertEqual(merged.slug, "none-sa60twp")
+        self.assertEqual(merged.code, "SA60TWP")
+        self.assertFalse(merged.withdrawn)
+        self.assertEqual(merged.id, duplicate_1.id)
+        self.assertEqual("none-60", merged.vehiclecode_set.get().code)
 
     def test_livery_admin(self):
         self.client.force_login(self.staff_user)
