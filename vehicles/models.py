@@ -807,6 +807,7 @@ class VehicleLocation:
         if self.tfl_code:
             json["tfl_code"] = self.tfl_code
         if journey.trip_id:
+            json["date"] = journey.date
             json["trip_id"] = journey.trip_id
         if journey.service_id:
             json["service_id"] = journey.service_id
