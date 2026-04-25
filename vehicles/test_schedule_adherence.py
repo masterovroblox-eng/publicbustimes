@@ -310,11 +310,53 @@ class ScheduleAdherenceTest(TestCase):
                 self.assertContains(response, "10:43")  # scheduled time
                 self.assertContains(response, "10:59")  # expected time
 
-            # past the scheduled time
+            # past the scheduled time - should still show late departure
             with time_machine.travel("2024-02-16T10:50:00Z"), self.assertNumQueries(9):
                 response = self.client.get("/stops/210021509680/departures")
                 self.assertContains(response, "10:43")  # scheduled time
                 self.assertContains(response, "10:59")  # expected time
+
+            # on route, but before scheduled start - progress but no delay
+            redis_client.set(
+                "vehicle1",
+                json.dumps(
+                    {
+                        "id": 1,
+                        "journey_id": 1,
+                        "coordinates": [-0.332185, 51.750952],
+                        "heading": 0,
+                        "trip_id": self.journey.trip_id,
+                        "datetime": "2023-08-31T09:00:07Z",
+                        "date": "2023-08-31",
+                    }
+                ),
+            )
+            response_json = self.client.get("/stops/210021509680/times.json").json()
+            self.assertNotIn("delay", response_json["times"][0])
+            self.assertNotIn("expected_departure_time", response_json["times"][0])
+
+            # delay already calculated (eg TfW)
+            redis_client.set(
+                "vehicle1",
+                json.dumps(
+                    {
+                        "id": 1,
+                        "journey_id": 1,
+                        "coordinates": [1, 50],
+                        "heading": 0,
+                        "trip_id": self.journey.trip_id,
+                        "datetime": "2023-08-31T09:50:07Z",
+                        "date": "2023-08-31",
+                        "delay": 60,
+                    }
+                ),
+            )
+            response_json = self.client.get("/stops/210021509680/times.json").json()
+            self.assertEqual(response_json["times"][0]["delay"], "P0DT00H01M00S")
+            self.assertEqual(
+                response_json["times"][0]["expected_departure_time"],
+                "2024-02-16T10:44:00Z",
+            )
 
             # a long way off-route - no prediction
             redis_client.set(

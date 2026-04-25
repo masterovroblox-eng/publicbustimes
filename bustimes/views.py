@@ -509,19 +509,26 @@ def stop_times_json(request, atco_code):
             if time["trip_id"] in by_trip:
                 item = by_trip[time["trip_id"]]
 
-                if "progress" not in item:
+                if "progress" not in item and "delay" not in item:
                     add_progress_and_delay(item, time["stop_time"])
-                if not (progress := item.get("progress")):
+
+                if "delay" not in item:
                     continue
+
+                progress = item.get("progress")
 
                 if (
                     (time["aimed_arrival_time"] or time["aimed_departure_time"]) >= when
-                    or progress["id"] < time["id"]
-                    or (progress["id"] == time["id"] and progress["progress"] == 0)
+                    or progress
+                    and (
+                        progress["id"] < time["id"]
+                        or progress["id"] == time["id"]
+                        and progress["progress"] == 0
+                    )
                 ):
                     delay = timedelta(seconds=item["delay"])
                     time["delay"] = delay
-                    if delay < timedelta() and progress["sequence"] == 0:
+                    if delay < timedelta() and progress and progress["sequence"] == 0:
                         delay = timedelta()
                     if time["aimed_departure_time"]:
                         time["expected_departure_time"] = (
