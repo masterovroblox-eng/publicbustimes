@@ -57,9 +57,7 @@ class Progress:
 
     def calculate_delay(self, when, date):
         # if the trip hasn't started yet...
-        first = self.stop_times[0]
-        first_dep = first.departure_datetime(date) or first.arrival_datetime(date)
-        if when < first_dep:
+        if when < self.stop_times[0].departure_datetime(date):
             return
 
         prev = self.prev_stop_time
@@ -67,8 +65,12 @@ class Progress:
 
         # when the bus is scheduled to leave prev / arrive at next
         # (arrival/departure can be None when the two would be equal)
-        prev_dep = prev.departure_datetime(date) or prev.arrival_datetime(date)
-        next_arr = next_.arrival_datetime(date) or next_.departure_datetime(date)
+        prev_dep = prev.departure_datetime(date)
+        if prev_dep is None:
+            prev_dep = prev.arrival_datetime(date)
+        next_arr = next_.arrival_datetime(date)
+        if next_arr is None:
+            next_arr = next_.departure_datetime(date)
 
         # if the bus is at prev stop and within its scheduled dwell, it's on time
         if self.progress == 0:
