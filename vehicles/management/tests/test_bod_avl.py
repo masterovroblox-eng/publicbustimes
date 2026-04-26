@@ -365,7 +365,9 @@ class BusOpenDataVehicleLocationsTest(TestCase):
                 atco_code="b", latlong="POINT (0.15 52.20)", active=True
             )
 
-            a = StopTime.objects.create(trip=self.trip, stop_id="a", arrival="25:00:00")
+            a = StopTime.objects.create(
+                trip=self.trip, stop_id="a", departure="25:00:00"
+            )
             StopTime.objects.create(trip=self.trip, stop_id="b", arrival="25:01:00")
 
             response = self.client.get(f"/vehicles.json?trip={self.trip.id}")

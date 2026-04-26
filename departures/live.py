@@ -160,7 +160,7 @@ def get_departures(stop, services, when) -> dict:
                             continue
 
                         if (
-                            "overdue" not in item
+                            "overdue" not in departure
                             or "progress" in item
                             and (
                                 item["progress"]["id"] < departure["stop_time"].id
