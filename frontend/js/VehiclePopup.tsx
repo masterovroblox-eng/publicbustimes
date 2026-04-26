@@ -3,6 +3,7 @@ import { Popup, type PopupEvent } from "react-map-gl/maplibre";
 import TimeAgo from "react-timeago";
 import { Link } from "wouter";
 import type { Vehicle } from "./VehicleMarker";
+import { now } from "./clockSkew";
 
 function getTimeDelta(seconds: number) {
   const minutes = Math.round(seconds / 60);
@@ -152,7 +153,7 @@ export default function VehiclePopup({
       )}
       <Delay item={item} />
       <div>
-        <TimeAgo date={item.datetime} key={item.datetime} />
+        <TimeAgo date={item.datetime} now={now} key={item.datetime} />
       </div>
     </Popup>
   );

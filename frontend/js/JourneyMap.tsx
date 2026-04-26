@@ -18,6 +18,7 @@ import VehicleMarker, {
   getClickedVehicleMarkerId,
 } from "./VehicleMarker";
 import VehiclePopup from "./VehiclePopup";
+import { recordSkew } from "./clockSkew";
 import { getBounds, getFont } from "./utils";
 
 type VehicleJourneyLocation = {
@@ -359,6 +360,7 @@ function JourneyVehicle({
 
     const loadVehicle = () => {
       fetch(`/vehicles.json?id=${vehicleId}`).then((response) => {
+        recordSkew(response);
         response.json().then((data: Vehicle[]) => {
           if (current && data && data.length) {
             setVehicle(data[0]);

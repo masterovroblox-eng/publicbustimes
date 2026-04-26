@@ -31,6 +31,7 @@ import StopPopup, { type Stop } from "./StopPopup";
 import { Route } from "./TripMap";
 import TripTimetable, { type Trip, tripFromJourney } from "./TripTimetable";
 import VehiclePopup from "./VehiclePopup";
+import { recordSkew } from "./clockSkew";
 import { getBounds, getFont } from "./utils";
 
 import { decodeTimeAwarePolyline } from "./time-aware-polyline";
@@ -230,6 +231,7 @@ function fetchJson(url: string) {
     credentials: "omit",
   }).then(
     (response) => {
+      recordSkew(response);
       if (response.ok) {
         return response.json();
       }
@@ -615,6 +617,7 @@ export default function BigMap(
       })
         .then(
           (response) => {
+            recordSkew(response);
             if (response.ok || response.status === 404) {
               response.json().then((items: VehicleLocation[]) => {
                 vehiclesHighWaterMark.current = _bounds;
