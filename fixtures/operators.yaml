@@ -175,11 +175,6 @@ FSCE:
 WAEN:
   name: Macleod's Coaches
   url: http://macleodscoaches.com/
-YYTG:
-  name: Yorkshire Buses
-  url: https://www.yorkshirebuses.co.uk
-  phone: 0113 246 4914
-  email: traffic@yorkshirebuses.co.uk
 BNVB:
   name: Bee Network - Vision Bus
 BNSM:
@@ -214,20 +209,10 @@ WEFC:
   url: https://www.westmorlandandfurness.gov.uk/parking-streets-and-transport/bus-services/find-bus
 ACAH:
   name: Aircoach
-NTMY:
-  name: Ashwood Travel
 TXCO:
   url: https://www.facebook.com/AimeesTravel
-AMGR:
-  url: https://flexi-bus.co.uk/
 HCCT:
   url: https://www.hants.gov.uk/transport/alternativetransport/carshares/services
-AMBS:
-  url: https://ambassadortravelanglialtd.co.uk/
-DGCB:
-  url: https://www.dumfriesandgalloway.gov.uk/roads-transport-parking/public-transport/bus-ferry-timetables
-YSQU:
-  url: https://www.squarepegbuses.co.uk/
 FXTX:
   url: https://www.felixcoaches.co.uk/
 FVTC: 
