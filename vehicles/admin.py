@@ -198,7 +198,7 @@ class VehicleAdmin(admin.ModelAdmin):
             vehicle.code = duplicate.code
 
             if not vehicle.latest_journey_id or (
-                not duplicate.latest_journey_id
+                duplicate.latest_journey_id
                 and duplicate.latest_journey_id > vehicle.latest_journey_id
             ):
                 vehicle.latest_journey = duplicate.latest_journey
@@ -219,6 +219,7 @@ class VehicleAdmin(admin.ModelAdmin):
                     "latest_journey",
                 ]
             )
+
             self.message_user(
                 request,
                 format_html(
