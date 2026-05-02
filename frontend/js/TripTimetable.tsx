@@ -7,7 +7,6 @@ export type TripTime = {
     name: string;
     atco_code?: string;
     location?: [number, number];
-    icon?: string | null;
     bearing?: number | null;
   };
   track?: [number, number][] | null;
@@ -78,9 +77,6 @@ function Row({
   let className: string | undefined;
 
   let stopName: string | ReactElement = stop.stop.name;
-  if (stop.stop.icon) {
-    stopName = `${stopName} (${stop.stop.icon})`;
-  }
   if (stop.stop.atco_code) {
     const url = `/stops/${stop.stop.atco_code}`;
     if (url === highlightedStop) {

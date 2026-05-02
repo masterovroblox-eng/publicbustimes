@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 import { Hash, type LngLatBounds, type Map as MapGL } from "maplibre-gl";
@@ -28,6 +29,7 @@ import VehicleMarker, {
 import {
   Locations,
   type VehicleJourney,
+  type VehicleJourneyLocation,
   getUtcOffsetSeconds,
   locationsFromPolyline,
 } from "./JourneyMap";
@@ -533,7 +535,7 @@ export default function BigMap(
 
   const initialViewState = useRef(window.INITIAL_VIEW_STATE);
 
-  const journeyLocations = useMemo(() => {
+  const polylineLocations = useMemo(() => {
     if (journey?.time_aware_polyline) {
       return locationsFromPolyline(
         journey.time_aware_polyline,
@@ -543,10 +545,40 @@ export default function BigMap(
     return [];
   }, [journey?.time_aware_polyline, journey?.datetime]);
 
+  const [appendedLocations, setAppendedLocations] = useState<
+    VehicleJourneyLocation[]
+  >([]);
+
+  const journeyLocations = useMemo(
+    () => polylineLocations.concat(appendedLocations),
+    [polylineLocations, appendedLocations],
+  );
+
   const journeyIsCurrent = useMemo(() => {
     if (!journey) return false;
     return Date.now() - new Date(journey.datetime).getTime() < 4 * 3600 * 1000;
   }, [journey]);
+
+  // extend the trail as the bus moves
+  useEffect(() => {
+    if (props.mode !== MapMode.Journey || !tripVehicle) return;
+    setAppendedLocations((appended) => {
+      const lastTs = appended.length
+        ? appended[appended.length - 1].id
+        : polylineLocations.length
+          ? polylineLocations[polylineLocations.length - 1].id
+          : 0;
+      if (tripVehicle.datetime <= lastTs) return appended;
+      return appended.concat([
+        {
+          id: tripVehicle.datetime,
+          coordinates: tripVehicle.coordinates,
+          datetime: tripVehicle.datetime,
+          direction: tripVehicle.heading,
+        },
+      ]);
+    });
+  }, [tripVehicle, props.mode, polylineLocations]);
 
   const bounds = useMemo(() => {
     if (trip) {
@@ -554,9 +586,9 @@ export default function BigMap(
     }
     if (journey) {
       const _bounds = getBounds(journey.times, (item) => item.stop.location);
-      return getBounds(journeyLocations, (item) => item.coordinates, _bounds);
+      return getBounds(polylineLocations, (item) => item.coordinates, _bounds);
     }
-  }, [trip, journey, journeyLocations]);
+  }, [trip, journey, polylineLocations]);
 
   const fitBoundsOptions = useMemo(() => {
     if (props.mode === MapMode.Slippy || props.mode === MapMode.Operator) {
