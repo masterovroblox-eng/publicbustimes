@@ -67,7 +67,7 @@ class Route(models.Model):
         "vosa.Registration", models.SET_NULL, null=True, blank=True
     )
     line_brand = models.CharField(max_length=255, blank=True)
-    line_name = models.CharField(max_length=255, blank=True)
+    line_name = models.CharField(max_length=255, blank=True, db_collation="en_numeric")
     revision_number = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(null=True, blank=True)
     modified_at = models.DateTimeField(null=True, blank=True)

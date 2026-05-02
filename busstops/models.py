@@ -677,7 +677,7 @@ class StopUsage(models.Model):
     order = models.PositiveSmallIntegerField()
     timing_point = models.BooleanField(default=True)
     inbound = models.BooleanField(default=False)
-    line_name = models.CharField()
+    line_name = models.CharField(db_collation="en_numeric")
 
     class Meta:
         ordering = ("inbound", "order")
