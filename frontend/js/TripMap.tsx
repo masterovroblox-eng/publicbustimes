@@ -2,8 +2,6 @@ import React from "react";
 
 import { Layer, type LayerProps, Source } from "react-map-gl/maplibre";
 
-import { getFont } from "./utils";
-
 import { ThemeContext } from "./Map";
 import type { TripTime } from "./TripTimetable";
 
@@ -15,21 +13,20 @@ export const Route = React.memo(function Route({ times }: RouteProps) {
   const theme = React.useContext(ThemeContext);
   const darkMode = theme.endsWith("_dark") || theme.endsWith("_satellite");
 
-  const font = getFont(theme);
-
   const stopsStyle: LayerProps = {
     id: "stops",
     type: "symbol",
     layout: {
       "symbol-sort-key": ["get", "priority"],
-      "text-field": ["get", "time"],
-      "text-size": 12,
-      "text-font": font,
-    },
-    paint: {
-      "text-color": darkMode ? "#fff" : "#333",
-      "text-halo-color": darkMode ? "#333" : "#fff",
-      "text-halo-width": 2,
+      "icon-image": [
+        "case",
+        ["==", ["get", "bearing"], ["literal", null]],
+        darkMode ? "route-stop-marker-dark-circle" : "route-stop-marker-circle",
+        darkMode ? "route-stop-marker-dark" : "route-stop-marker",
+      ],
+      "icon-rotate": ["+", 45, ["get", "bearing"]],
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
     },
   };
 
@@ -37,7 +34,8 @@ export const Route = React.memo(function Route({ times }: RouteProps) {
     type: "line",
     paint: {
       "line-color": darkMode ? "#ddd" : "#666",
-      "line-width": 3,
+      "line-width": 2,
+      "line-dasharray": [1, 2],
     },
   };
 
@@ -45,7 +43,7 @@ export const Route = React.memo(function Route({ times }: RouteProps) {
     type: "line",
     paint: {
       "line-color": darkMode ? "#eee" : "#666",
-      "line-width": 2,
+      "line-width": 1,
       "line-dasharray": [2, 2],
     },
   };
@@ -138,10 +136,11 @@ export const Route = React.memo(function Route({ times }: RouteProps) {
                     : null,
                   name: stop.stop.name,
                   bearing: stop.stop.bearing,
-                  time:
-                    stop.aimed_arrival_time ||
-                    stop.aimed_departure_time ||
-                    stop.expected_arrival_time,
+                  aimed_arrival_time: stop.aimed_arrival_time,
+                  aimed_departure_time: stop.aimed_departure_time,
+                  expected_arrival_time: stop.expected_arrival_time,
+                  expected_departure_time: stop.expected_departure_time,
+                  actual_departure_time: stop.actual_departure_time,
                   priority: stop.timing_status === "PTP" ? 0 : 1, // symbol-sort-key lower number - "higher" priority
                 },
               };

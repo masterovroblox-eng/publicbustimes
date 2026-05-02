@@ -186,4 +186,12 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             "slug": instance.service.slug,
         }
 
+        operator = instance.trip and instance.trip.operator or instance.vehicle.operator
+        if operator:
+            extra_data["operator"] = {
+                "noc": operator.noc,
+                "slug": operator.slug,
+                "name": operator.name,
+            }
+
         return Response(serializer.data | extra_data)

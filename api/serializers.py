@@ -288,6 +288,7 @@ class VehicleJourneySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "datetime",
+            "date",
             "vehicle",
             "route_name",
             "destination",

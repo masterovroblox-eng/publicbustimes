@@ -66,29 +66,18 @@ export default function History() {
 
       setLoading(true);
 
-      let url = "/";
-      if (window.SERVICE_ID) {
-        url += `services/${window.SERVICE_ID}/`;
-      } else if (window.VEHICLE_ID) {
-        url += `vehicles/${window.VEHICLE_ID}/`;
-      }
-      url += `${journeyId}.json`;
+      const id = journeyId.replace(/^journeys\//, "");
 
-      fetch(url)
-        .then(
-          (response) => {
-            if (response.ok) {
-              response.json().then((data) => {
-                data.id = journeyId;
-                setLoading(false);
-                setJourney(data);
-              });
-            }
-          },
-          // () => {
-          //   // never mind
-          // }
-        )
+      fetch(`/api/vehiclejourneys/${id}/`)
+        .then((response) => {
+          if (response.ok) {
+            response.json().then((data) => {
+              data.id = id;
+              setLoading(false);
+              setJourney(data);
+            });
+          }
+        })
         .catch(() => {
           // never mind
         });

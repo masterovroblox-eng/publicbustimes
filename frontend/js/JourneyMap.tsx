@@ -11,59 +11,80 @@ import BusTimesMap, { ThemeContext } from "./Map";
 
 import type { Map as MapGL } from "maplibre-gl";
 import LoadingSorry from "./LoadingSorry";
-import StopPopup, { type Stop } from "./StopPopup";
-import TripTimetable, { type TripTime, tripFromJourney } from "./TripTimetable";
+import StopPopup from "./StopPopup";
+import { Route } from "./TripMap";
+import TripTimetable, { type Trip, type TripTime } from "./TripTimetable";
 import VehicleMarker, {
   type Vehicle,
   getClickedVehicleMarkerId,
 } from "./VehicleMarker";
 import VehiclePopup from "./VehiclePopup";
 import { recordSkew } from "./clockSkew";
+import { decodeTimeAwarePolyline } from "./time-aware-polyline";
 import { getBounds, getFont } from "./utils";
 
-type VehicleJourneyLocation = {
+export type VehicleJourneyLocation = {
   id: number;
   coordinates: [number, number];
-  // delta: number | null;
   direction?: number | null;
   datetime: string;
 };
 
-export type StopTime = {
-  id: number;
-  atco_code: string;
-  name: string;
-  aimed_arrival_time: string;
-  aimed_departure_time: string | null;
-  minor: boolean;
-  heading: number;
-  coordinates?: [number, number] | null;
-  actual_departure_time: string;
+export type VehicleJourney = {
+  id?: string | number;
+  datetime: string;
+  vehicle?: {
+    id: number;
+    slug: string;
+    fleet_code: string;
+    reg: string;
+  };
+  route_name?: string;
+  destination?: string;
+  trip_id?: number | null;
+  times?: TripTime[];
+  time_aware_polyline?: string;
+  service?: {
+    id: number;
+    slug: string;
+  };
 };
 
-export type VehicleJourney = {
-  id?: string;
-  vehicle_id?: number;
-  service_id?: number;
-  trip_id?: number;
-  datetime: string;
-  route_name?: string;
-  code: string;
-  destination: string;
-  direction: string;
-  stops?: StopTime[];
-  locations?: VehicleJourneyLocation[];
-  vehicle?: string;
-  current: boolean;
-  next: {
-    id: number;
-    datetime: string;
-  };
-  previous: {
-    id: number;
-    datetime: string;
-  };
-};
+function calcBearing(
+  [lng1, lat1]: [number, number],
+  [lng2, lat2]: [number, number],
+): number {
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x =
+    Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+export function locationsFromPolyline(
+  polyline: string,
+): VehicleJourneyLocation[] {
+  const points = decodeTimeAwarePolyline(polyline);
+  return points.map(([lat, lng, ts], i) => {
+    const coordinates: [number, number] = [lng, lat];
+    let direction: number | undefined;
+    const next = points[i + 1];
+    const prev = points[i - 1];
+    if (next) {
+      direction = calcBearing(coordinates, [next[1], next[0]]);
+    } else if (prev) {
+      direction = calcBearing([prev[1], prev[0]], coordinates);
+    }
+    return {
+      id: ts,
+      coordinates,
+      datetime: new Date(ts).toISOString(),
+      direction,
+    };
+  });
+}
 
 export const Locations = React.memo(function Locations({
   locations,
@@ -78,7 +99,6 @@ export const Locations = React.memo(function Locations({
     paint: {
       "line-color": darkMode ? "#eee" : "#666",
       "line-width": 2,
-      "line-dasharray": [2, 2],
     },
   };
 
@@ -139,9 +159,7 @@ export const Locations = React.memo(function Locations({
                 coordinates: l.coordinates,
               },
               properties: {
-                // delta: l.delta,
                 heading: l.direction,
-                // datetime: l.datetime,
                 time: l.datetime.slice(11, 19),
               },
             };
@@ -154,94 +172,7 @@ export const Locations = React.memo(function Locations({
   );
 });
 
-export const JourneyStops = React.memo(function Stops({
-  stops,
-  clickedStopUrl,
-  setClickedStop,
-}: {
-  stops: StopTime[];
-  clickedStopUrl: string | undefined;
-  setClickedStop: (s: string | undefined) => void;
-}) {
-  const theme = React.useContext(ThemeContext);
-  const darkMode = theme.endsWith("_dark") || theme.endsWith("_satellite");
-
-  const features = React.useMemo(() => {
-    return stops
-      .filter((s) => s.coordinates)
-      .map((s) => {
-        return {
-          type: "Feature" as const,
-          geometry: {
-            type: "Point" as const,
-            coordinates: s.coordinates as [number, number],
-          },
-          properties: {
-            url: `/stops/${s.atco_code}`,
-            name: s.name,
-            heading: s.heading,
-          },
-        };
-      });
-  }, [stops]);
-
-  const featuresByUrl = React.useMemo<
-    { [url: string]: Stop } | undefined
-  >(() => {
-    return Object.assign(
-      {},
-      ...features.map((stop) => ({ [stop.properties.url]: stop })),
-    );
-  }, [features]);
-
-  const clickedStop =
-    featuresByUrl && clickedStopUrl && featuresByUrl[clickedStopUrl];
-
-  return (
-    <React.Fragment>
-      <Source
-        type="geojson"
-        data={{
-          type: "FeatureCollection",
-          features: features,
-        }}
-      >
-        <Layer
-          {...{
-            id: "stops",
-            type: "symbol",
-            layout: {
-              // "symbol-sort-key": ["get", "priority"],
-              "icon-rotate": ["+", 45, ["get", "heading"]],
-              "icon-image": [
-                "case",
-                ["==", ["get", "heading"], ["literal", null]],
-                darkMode
-                  ? "route-stop-marker-dark-circle"
-                  : "route-stop-marker-circle",
-                darkMode ? "route-stop-marker-dark" : "route-stop-marker",
-              ],
-              // "icon-padding": 0,
-              "icon-allow-overlap": true,
-              "icon-ignore-placement": true,
-            },
-          }}
-        />
-      </Source>
-      {clickedStop && (
-        <StopPopup
-          item={clickedStop}
-          onClose={() => setClickedStop(undefined)}
-        />
-      )}
-    </React.Fragment>
-  );
-});
-
-function formatDatetime(datetime: string, contextDate?: string) {
-  if (contextDate && datetime.startsWith(contextDate)) {
-    return datetime.slice(11, 16); // just the time
-  }
+function formatDatetime(datetime: string) {
   return datetime.slice(0, 16).replace("T", " ");
 }
 
@@ -261,46 +192,18 @@ function Sidebar({
     className += " loading";
   }
 
-  const trip = React.useMemo(() => {
-    return tripFromJourney(journey);
-  }, [journey]);
-
-  let previousLink: React.ReactElement | string | undefined;
-  let nextLink: React.ReactElement | string | undefined;
-  const date = journey.datetime.slice(0, 10);
-
-  if (journey) {
-    if (journey.previous) {
-      previousLink = formatDatetime(journey.previous.datetime, date);
-
-      previousLink = (
-        <p className="previous">
-          <a href={`#journeys/${journey.previous.id}`}>&larr; {previousLink}</a>
-        </p>
-      );
+  const trip: Trip | undefined = React.useMemo(() => {
+    if (journey.times) {
+      return { times: journey.times };
     }
-    if (journey.next) {
-      nextLink = formatDatetime(journey.next.datetime, date);
-      nextLink = (
-        <p className="next">
-          <a href={`#journeys/${journey.next.id}`}>{nextLink} &rarr;</a>
-        </p>
-      );
-    }
-  }
+  }, [journey.times]);
 
   let text = formatDatetime(journey.datetime);
-  let reg = null;
+  let reg: React.ReactNode = null;
   if (journey.vehicle) {
-    reg = journey.vehicle;
-    if (journey.vehicle.includes(" ")) {
-      if (journey.vehicle.includes(" - ")) {
-        const parts = journey.vehicle.split(" - ", 2);
-        text += ` ${parts[0]}`;
-        reg = <span className="reg">{parts[1]}</span>;
-      }
-    }
-  } else {
+    text += ` ${journey.vehicle.fleet_code}`;
+    reg = <span className="reg">{journey.vehicle.reg}</span>;
+  } else if (journey.route_name) {
     text += ` ${journey.route_name}`;
     if (journey.destination) {
       text += ` to ${journey.destination}`;
@@ -309,10 +212,6 @@ function Sidebar({
 
   return (
     <div className={className}>
-      <div className="navigation">
-        {previousLink}
-        {nextLink}
-      </div>
       <p>
         {text} {reg}
       </p>
@@ -322,22 +221,18 @@ function Sidebar({
           trip={trip}
           vehicle={vehicle}
         />
-      ) : (
-        <p>{journey.code}</p>
-      )}
+      ) : null}
     </div>
   );
 }
 
 function JourneyVehicle({
   vehicleId,
-  // journey,
   onVehicleMove,
   clickedVehicleMarker,
   setClickedVehicleMarker,
 }: {
   vehicleId: number;
-  // journey: VehicleJourney;
   onVehicleMove: (v: Vehicle) => void;
   clickedVehicleMarker: boolean;
   setClickedVehicleMarker: (b: boolean) => void;
@@ -395,6 +290,10 @@ function JourneyVehicle({
   );
 }
 
+const isCurrent = (datetime: string): boolean => {
+  return Date.now() - new Date(datetime).getTime() < 4 * 3600 * 1000;
+};
+
 export default function JourneyMap({
   journey,
   loading = false,
@@ -436,7 +335,6 @@ export default function JourneyMap({
 
   const onMouseLeave = React.useCallback(() => {
     setCursor(undefined);
-    // setClickedLocation(undefined);
   }, []);
 
   const [clickedStopUrl, setClickedStop] = React.useState<string>();
@@ -444,20 +342,20 @@ export default function JourneyMap({
   const [clickedVehicleMarker, setClickedVehicleMarker] =
     React.useState<boolean>(true);
 
-  const [locations, setLocations] = React.useState<VehicleJourneyLocation[]>(
-    [],
-  );
+  const [tailLocations, setTailLocations] = React.useState<
+    VehicleJourneyLocation[]
+  >([]);
 
   const [vehicle, setVehicle] = React.useState<Vehicle>();
 
   const handleVehicleMove = React.useCallback(
     (vehicle: Vehicle) => {
       if (
-        !locations.length ||
-        locations[locations.length - 1].datetime < vehicle.datetime
+        !tailLocations.length ||
+        tailLocations[tailLocations.length - 1].datetime < vehicle.datetime
       ) {
-        setLocations(
-          locations.concat([
+        setTailLocations(
+          tailLocations.concat([
             {
               id: new Date(vehicle.datetime).getTime(),
               coordinates: vehicle.coordinates,
@@ -469,8 +367,17 @@ export default function JourneyMap({
         setVehicle(vehicle);
       }
     },
-    [locations],
+    [tailLocations],
   );
+
+  const polylineLocations = React.useMemo(() => {
+    if (journey?.time_aware_polyline) {
+      return locationsFromPolyline(journey.time_aware_polyline);
+    }
+    return [];
+  }, [journey?.time_aware_polyline]);
+
+  const journeyIsCurrent = journey ? isCurrent(journey.datetime) : false;
 
   const handleMapClick = React.useCallback((e: MapLayerMouseEvent) => {
     const vehicleId = getClickedVehicleMarkerId(e);
@@ -504,20 +411,13 @@ export default function JourneyMap({
 
   const bounds = React.useMemo(() => {
     if (journey) {
-      const bounds = getBounds(journey.stops, (item) => item.coordinates);
-      return getBounds(journey.locations, (item) => item.coordinates, bounds);
+      const _bounds = getBounds(journey.times, (item) => item.stop.location);
+      return getBounds(polylineLocations, (item) => item.coordinates, _bounds);
     }
-  }, [journey]);
+  }, [journey, polylineLocations]);
 
   const onMapInit = React.useCallback((map: MapGL) => {
-    // debugger;
     mapRef.current = map;
-
-    // if (bounds) {
-    //   map.fitBounds(bounds, {
-    //     padding: 50,
-    //   });
-    // }
   }, []);
 
   React.useEffect(() => {
@@ -532,8 +432,16 @@ export default function JourneyMap({
     return <LoadingSorry />;
   }
 
+  const clickedStop =
+    clickedStopUrl && journey.times
+      ? journey.times.find(
+          (t) =>
+            t.stop.atco_code && `/stops/${t.stop.atco_code}` === clickedStopUrl,
+        )
+      : undefined;
+
   let className = "journey-map has-sidebar";
-  if (!journey.stops) {
+  if (!journey.times) {
     className += " no-stops";
   }
 
@@ -556,27 +464,43 @@ export default function JourneyMap({
             onMapInit={onMapInit}
             interactiveLayerIds={["stops", "locations"]}
           >
-            {journey.stops ? (
-              <JourneyStops
-                stops={journey.stops}
-                clickedStopUrl={clickedStopUrl}
-                setClickedStop={setClickedStop}
+            {journey.times ? <Route times={journey.times} /> : null}
+
+            {clickedStop?.stop.location ? (
+              <StopPopup
+                item={{
+                  type: "Feature",
+                  geometry: {
+                    type: "Point",
+                    coordinates: clickedStop.stop.location,
+                  },
+                  properties: {
+                    url: `/stops/${clickedStop.stop.atco_code}`,
+                    name: clickedStop.stop.name,
+                    aimed_arrival_time: clickedStop.aimed_arrival_time,
+                    aimed_departure_time: clickedStop.aimed_departure_time,
+                    expected_arrival_time: clickedStop.expected_arrival_time,
+                    expected_departure_time:
+                      clickedStop.expected_departure_time,
+                    actual_departure_time: clickedStop.actual_departure_time,
+                  },
+                }}
+                onClose={() => setClickedStop(undefined)}
               />
             ) : null}
 
-            {journey.locations ? (
+            {polylineLocations.length ? (
               <Locations
                 locations={
-                  journey.current
-                    ? journey.locations.concat(locations)
-                    : journey.locations
+                  journeyIsCurrent
+                    ? polylineLocations.concat(tailLocations)
+                    : polylineLocations
                 }
               />
             ) : null}
-            {journey.locations && journey.current ? (
+            {journeyIsCurrent && journey.vehicle ? (
               <JourneyVehicle
-                vehicleId={window.VEHICLE_ID}
-                // journey={journey}
+                vehicleId={journey.vehicle.id}
                 onVehicleMove={handleVehicleMove}
                 clickedVehicleMarker={clickedVehicleMarker}
                 setClickedVehicleMarker={setClickedVehicleMarker}
