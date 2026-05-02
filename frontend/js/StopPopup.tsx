@@ -39,31 +39,45 @@ function StopTimes({ properties }: { properties: Stop["properties"] }) {
   );
   const actual = formatTime(properties.actual_departure_time);
 
-  const aimed =
-    aimedArrival && aimedDeparture && aimedArrival !== aimedDeparture
-      ? `${aimedArrival}–${aimedDeparture}`
-      : aimedArrival || aimedDeparture;
+  let aimed: undefined | ReactElement;
+  if (aimedArrival && aimedDeparture && aimedArrival !== aimedDeparture) {
+    aimed = (
+      <>
+        <tr>
+          <th scope="row" rowspan="2">
+            Scheduled
+          </th>
+          <td>{aimedArrival}</td>
+        </tr>
+        <tr>
+          <td>{aimedDeparture}</td>
+        </tr>
+      </>
+    );
+  } else if (aimedArrival || aimedDeparture) {
+    aimed = (
+      <tr>
+        <th scope="row">Scheduled</th>
+        <td>{aimedArrival || aimedDeparture}</td>
+      </tr>
+    );
+  }
 
   if (!aimed && !expected && !actual) return null;
 
   return (
     <table className="stop-popup-times">
       <tbody>
-        {aimed ? (
-          <tr>
-            <th>Scheduled</th>
-            <td>{aimed}</td>
-          </tr>
-        ) : null}
+        {aimed}
         {expected ? (
           <tr>
-            <th>Expected</th>
+            <th scope="row">Expected</th>
             <td>{expected}</td>
           </tr>
         ) : null}
         {actual ? (
           <tr>
-            <th>Actual</th>
+            <th scope="row">Actual</th>
             <td>{actual}</td>
           </tr>
         ) : null}
