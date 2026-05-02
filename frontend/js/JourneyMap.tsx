@@ -32,6 +32,7 @@ export type VehicleJourneyLocation = {
 
 export type VehicleJourney = {
   id?: string | number;
+  date: string;
   datetime: string;
   vehicle?: {
     id: number;
@@ -47,6 +48,11 @@ export type VehicleJourney = {
   service?: {
     id: number;
     slug: string;
+  };
+  operator?: {
+    noc: string;
+    slug: string;
+    name: string;
   };
 };
 

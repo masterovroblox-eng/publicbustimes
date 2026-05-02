@@ -415,7 +415,21 @@ function JourneySidebar(props: {
   if (journey.service) {
     service = (
       <li>
-        <a href={`/services/${journey.service.slug}`}>{journey.route_name}</a>
+        <a
+          href={`/services/${journey.service.slug}/vehicles?date=${journey.date}#journey-${journey.id}`}
+        >
+          {journey.route_name}
+        </a>
+      </li>
+    );
+  } else if (journey.operator) {
+    service = (
+      <li>
+        <a
+          href={`/services/${journey.operator.noc}:${journey.route_name}/vehicles?date=${journey.date}#journey-${journey.id}`}
+        >
+          {journey.route_name}
+        </a>
       </li>
     );
   }
@@ -424,9 +438,9 @@ function JourneySidebar(props: {
     className += " no-stops";
   }
 
-  // if (props.journeyId !== journey.id?.toString()) {
-  //   className += " loading";
-  // }
+  if (props.journeyId !== journey.id?.toString()) {
+    className += " loading";
+  }
 
   return (
     <div className={className}>
@@ -436,9 +450,9 @@ function JourneySidebar(props: {
           {service}
         </ul>
       ) : null}
-      {journey ? (
+      {journey.times ? (
         <TripTimetable
-          trip={journey}
+          trip={{ times: journey.times }}
           vehicle={props.vehicle}
           highlightedStop={props.highlightedStop}
         />

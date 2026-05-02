@@ -181,10 +181,11 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             )
             extra_data["time_aware_polyline"] = polyline
 
-        extra_data["service"] = {
-            "id": instance.service_id,
-            "slug": instance.service.slug,
-        }
+        if instance.service_id:
+            extra_data["service"] = {
+                "id": instance.service_id,
+                "slug": instance.service.slug,
+            }
 
         operator = instance.trip and instance.trip.operator or instance.vehicle.operator
         if operator:
