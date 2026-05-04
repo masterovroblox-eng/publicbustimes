@@ -75,7 +75,9 @@ class Command(GTFSRCommand):
             )
             now = self.get_datetime(item)
             if journey.datetime - now > timedelta(hours=12):
+                # `start_date` is today but the trip's operational day is yesterday
                 journey.datetime -= timedelta(days=1)
+                journey.date -= timedelta(days=1)
 
             journey.service = trip.route.service
 
