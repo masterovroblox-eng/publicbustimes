@@ -42,6 +42,7 @@ class VehicleJourneyFilter(FilterSet):
     trip = ModelChoiceFilter(queryset=Trip.objects, widget=NumberInput)
     source = ModelChoiceFilter(queryset=DataSource.objects, widget=NumberInput)
     datetime = DateTimeFilter()
+    date = DateFilter()
 
 
 class StopFilter(FilterSet):
