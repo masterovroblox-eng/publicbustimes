@@ -44,7 +44,7 @@ from redis.exceptions import ConnectionError
 from sql_util.utils import Exists, SubqueryMax, SubqueryMin
 from ukpostcodeutils import validation
 
-from bustimes.models import StopTime
+from bustimes.models import Trip, StopTime
 from departures import live
 from disruptions.models import Consequence, Situation
 from fares.models import FareTable
@@ -1519,14 +1519,16 @@ def service_map_data(request, service_id):
             for route_link in service.routelink_set.all()
         }
 
-        # build pairs of consecutive stops
-
+        # in theory the use of `distinct` might exclude some stops, but it's worth it
+        trips = Trip.objects.filter(route__service=service).distinct(
+            "destination", "journey_pattern", "inbound"
+        )
         stop_times = (
-            StopTime.objects.filter(trip__route__service=service)
+            StopTime.objects.filter(trip__in=trips)
             .order_by("trip_id", "id")
             .values_list("trip_id", "stop_id")
         )
-
+        # build pairs of consecutive stops
         pairs = set()
 
         for _, group in groupby(stop_times, key=lambda x: x[0]):  # group by trip_id
