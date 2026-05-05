@@ -123,15 +123,11 @@ class ImportLiveVehiclesCommand(BaseCommand):
         latest: dict | None = None,
         keep_journey=False,
     ):
-        if dt := self.get_datetime(item):
-            if dt.year == 1970:
-                dt = None
-            elif now and now < dt:
-                difference = dt - now
-                if difference > twelve_hours:
-                    dt = None  # dt more than 12 hours in the future (probably The Green Bus)
-                if 3000 < difference.total_seconds() <= 600:
-                    logger.warning("datetime %s is in the future", dt)
+        dt = self.get_datetime(item)
+        if dt.year == 1970:
+            dt = None
+        elif now and now < dt:
+            logger.warning("datetime %s is in the future", dt)
 
         location = None
         if vehicle is None:
@@ -172,9 +168,6 @@ class ImportLiveVehiclesCommand(BaseCommand):
                         dt = latest_datetime
                     else:
                         return
-        # elif now and datetime and (now - datetime).total_seconds() > 600:
-        #     # more than 10 minutes old
-        #     return
 
         latest_journey = vehicle.latest_journey
         if keep_journey:
@@ -206,10 +199,6 @@ class ImportLiveVehiclesCommand(BaseCommand):
                 if latest_journey.service_id or not journey.service_id:
                     return  # defer to other source
 
-        # if not latest and now and datetime:
-        #     if (now - datetime).total_seconds() > 900:
-        #         return  # more than 15 minutes old
-
         if not location:
             location = self.create_vehicle_location(item)
             if not location:
@@ -229,8 +218,6 @@ class ImportLiveVehiclesCommand(BaseCommand):
             location.heading = None
 
         location.datetime = dt
-        if not location.datetime:
-            location.datetime = now
 
         if latest and location.latlong and location.heading is None:
             if latest_latlong.equals_exact(location.latlong, 0.001):
