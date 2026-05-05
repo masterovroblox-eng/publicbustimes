@@ -302,6 +302,7 @@ if not TEST:  # pragma: nocover
             release=os.environ.get("COMMIT_HASH")
             or os.environ.get("KAMAL_CONTAINER_NAME"),
             traces_sampler=traces_sampler,
+            send_default_pii=False,
         )
         ignore_logger("django.security.DisallowedHost")
 
