@@ -118,7 +118,7 @@ class ImportLiveVehiclesCommand(BaseCommand):
     def handle_item(
         self,
         item,
-        now,
+        now=None,
         vehicle: Vehicle | None = None,
         latest: dict | None = None,
         keep_journey=False,
