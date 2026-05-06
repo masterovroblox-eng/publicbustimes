@@ -15,9 +15,11 @@ export function recordSkew(response: Response): void {
   if (Number.isNaN(serverTime)) {
     return;
   }
-  skew = serverTime - Date.now();
-  // if skew is negative, assume it's due to network latency - we're only correcting for slow clocks
-  if (skew < 0) {
+  const now = Date.now();
+  if (serverTime > now) {
+    skew = serverTime - now;
+  } else {
+    // if skew is negative, assume it's due to network latency - we're only correcting for slow clocks
     skew = 0;
   }
 }
