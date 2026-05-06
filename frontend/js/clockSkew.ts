@@ -22,6 +22,10 @@ export function recordSkew(response: Response): void {
     // if skew is negative, assume it's due to network latency - we're only correcting for slow clocks
     skew = 0;
   }
+  const container = document.getElementById("skew");
+  if (container) {
+    container.innerText = skew.toString();
+  }
 }
 
 export function now(): number {
