@@ -127,7 +127,9 @@ class ImportLiveVehiclesCommand(BaseCommand):
             if dt.year == 1970:
                 dt = None
             elif now and now < dt:
-                logger.warning("datetime %s is in the future", dt)
+                logger.warning(
+                    "%s: %s: %s is %s from now", timezone.now(), vehicle, dt, dt - now
+                )
 
         location = None
         if vehicle is None:
