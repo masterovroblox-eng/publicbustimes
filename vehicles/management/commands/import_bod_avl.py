@@ -622,6 +622,10 @@ class Command(ImportLiveVehiclesCommand):
 
         ns = _SIRI_NS
         service_delivery = root.find(f"{{{ns}}}ServiceDelivery")
+
+        if service_delivery is None:  # downloaded error page
+            return
+
         previous_time = self.source.datetime
 
         self.source.datetime = datetime.fromisoformat(
