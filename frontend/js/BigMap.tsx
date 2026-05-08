@@ -481,17 +481,25 @@ function JourneySidebar(props: {
           <dt>To</dt>
           <dd>{journey.destination}</dd>
         </div>
-        {/*<div>
-          <dt>Block</dt>
-          <dd>{ journey.block }</dd>
-        </div>*/}
       </dl>
-      {journey.times ? (
+      {journey.trip?.times ? (
         <TripTimetable
-          trip={{ times: journey.times }}
+          trip={{ times: journey.trip.times }}
           vehicle={props.vehicle}
           highlightedStop={props.highlightedStop}
         />
+      ) : null}
+      {journey.trip?.block ? (
+        <dl className="contact-details">
+          <div>
+            <dt>Block</dt>
+            <dd>
+              <a href={`/trips/${journey.trip.id}/block`}>
+                {journey.trip.block}
+              </a>
+            </dd>
+          </div>
+        </dl>
       ) : null}
     </div>
   );
@@ -1071,8 +1079,8 @@ export default function BigMap(
             <Route times={trip.times} />
           ) : null}
 
-          {props.mode === MapMode.Journey && journey?.times ? (
-            <Route times={journey.times} />
+          {props.mode === MapMode.Journey && journey?.trip?.times ? (
+            <Route times={journey.trip.times} />
           ) : null}
 
           {/* props.mode === MapMode.Slippy ? <SlippyMapHash /> : null */}
@@ -1091,9 +1099,9 @@ export default function BigMap(
               clickedStopUrl={clickedStopUrl}
               setClickedStop={setClickedStopURL}
             />
-          ) : props.mode === MapMode.Journey && journey?.times ? (
+          ) : props.mode === MapMode.Journey && journey?.trip?.times ? (
             <Stops
-              times={journey.times}
+              times={journey.trip.times}
               clickedStopUrl={clickedStopUrl}
               setClickedStop={setClickedStopURL}
             />

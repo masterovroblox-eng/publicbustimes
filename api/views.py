@@ -170,9 +170,10 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
         extra_data = {}
 
         if instance.trip:
-            # instance.trip.stops = TripViewSet.get_stops(instance.trip)
             instance.trip.destination_name = None
-            extra_data["trip"] = serializers.TripSerializer(instance.trip).data
+            instance.trip.stops = TripViewSet.get_stops(instance.trip)
+            trip_serializer = serializers.TripSerializer(instance.trip)
+            extra_data["trip"] = trip_serializer.data
 
         if redis_client:
             locations = redis_client.lrange(instance.get_redis_key(), 0, -1)
