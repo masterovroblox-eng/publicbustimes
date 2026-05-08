@@ -414,13 +414,12 @@ function JourneySidebar(props: {
 
   const journey = props.journey;
 
+  const _operator = journey.operator || journey.trip?.operator;
   let operator: ReactElement | undefined;
-  if (journey.operator) {
+  if (_operator) {
     operator = (
       <li>
-        <a href={`/operators/${journey.operator.slug}`}>
-          {journey.operator.name}
-        </a>
+        <a href={`/operators/${_operator.slug}`}>{_operator.name}</a>
       </li>
     );
   }
@@ -794,7 +793,7 @@ export default function BigMap(
         }
       } else {
         setTrip(undefined);
-        fetchJson(`api/vehiclejourneys/${props.journeyId}/`).then(
+        fetchJson(`api/vehiclejourneys/${props.journeyId}/details/`).then(
           (journey: VehicleJourney) => {
             setJourney({ ...journey, id: props.journeyId });
           },

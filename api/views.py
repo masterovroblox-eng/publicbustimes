@@ -1,6 +1,7 @@
 import struct
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import pagination, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from django.contrib.postgres.aggregates import ArrayAgg
@@ -161,15 +162,17 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = filters.VehicleJourneyFilter
 
-    def retrieve(self, request, *args, pk, **kwargs):
+    @action(detail=True)
+    def details(self, request, pk=None):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
 
         extra_data = {}
 
         if instance.trip:
-            instance.trip.stops = TripViewSet.get_stops(instance.trip)
-            extra_data["times"] = serializers.TripSerializer().get_times(instance.trip)
+            # instance.trip.stops = TripViewSet.get_stops(instance.trip)
+            instance.trip.destination_name = None
+            extra_data["trip"] = serializers.TripSerializer(instance.trip).data
 
         if redis_client:
             locations = redis_client.lrange(instance.get_redis_key(), 0, -1)
@@ -187,12 +190,11 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                 "slug": instance.service.slug,
             }
 
-        operator = instance.trip and instance.trip.operator or instance.vehicle.operator
-        if operator:
+        if not instance.trip and instance.vehicle.operator:
             extra_data["operator"] = {
-                "noc": operator.noc,
-                "slug": operator.slug,
-                "name": operator.name,
+                "noc": instance.vehicle.operator.noc,
+                "slug": instance.vehicle.operator.slug,
+                "name": instance.vehicle.operator.name,
             }
 
         return Response(serializer.data | extra_data)

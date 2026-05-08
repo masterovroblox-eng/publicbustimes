@@ -42,6 +42,7 @@ export type VehicleJourney = {
   route_name?: string;
   destination?: string;
   trip_id?: number | null;
+  trip?: Trip;
   times?: TripTime[];
   time_aware_polyline?: string;
   service?: {
