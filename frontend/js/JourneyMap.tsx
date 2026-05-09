@@ -54,6 +54,7 @@ export type VehicleJourney = {
     slug: string;
     name: string;
   };
+  live?: Vehicle[];
 };
 
 function calcBearing(

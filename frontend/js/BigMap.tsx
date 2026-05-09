@@ -649,7 +649,7 @@ export default function BigMap(
   const [loadingBuses, setLoadingBuses] = React.useState(true);
 
   const loadVehicles = React.useCallback(
-    (first = false) => {
+    (first = false, prefetched?: VehicleLocation[]) => {
       if (!first && document.hidden) {
         return;
       }
@@ -700,6 +700,48 @@ export default function BigMap(
         return;
       }
 
+      const handleItems = (items: VehicleLocation[]) => {
+        vehiclesHighWaterMark.current = _bounds;
+
+        if (props.mode === MapMode.Operator && !initialViewState.current) {
+          const bounds = getBounds(items, (item) => item.coordinates);
+          if (bounds) {
+            initialViewState.current = {
+              bounds,
+              fitBoundsOptions: {
+                padding: { top: 50, bottom: 150, left: 50, right: 50 },
+              },
+            };
+          }
+        }
+
+        if (items.length || vehiclesLength.current || first) {
+          if (trip || journey?.vehicle?.id) {
+            for (const item of items) {
+              if (
+                (trip && trip.id === item.trip_id) ||
+                journey?.vehicle?.id === item.id
+              ) {
+                if (first) setClickedVehicleMarker(item.id);
+                setTripVehicle(item);
+                break;
+              }
+            }
+          }
+
+          vehiclesLength.current = items.length;
+          setVehicles(items);
+        }
+      };
+
+      if (prefetched) {
+        handleItems(prefetched);
+        if (!document.hidden) {
+          vehiclesTimeout.current = window.setTimeout(loadVehicles, 12000);
+        }
+        return;
+      }
+
       setLoadingBuses(true);
 
       vehiclesAbortController.current = new AbortController();
@@ -712,42 +754,7 @@ export default function BigMap(
           (response) => {
             recordSkew(response);
             if (response.ok || response.status === 404) {
-              response.json().then((items: VehicleLocation[]) => {
-                vehiclesHighWaterMark.current = _bounds;
-
-                if (
-                  props.mode === MapMode.Operator &&
-                  !initialViewState.current
-                ) {
-                  const bounds = getBounds(items, (item) => item.coordinates);
-                  if (bounds) {
-                    initialViewState.current = {
-                      bounds,
-                      fitBoundsOptions: {
-                        padding: { top: 50, bottom: 150, left: 50, right: 50 },
-                      },
-                    };
-                  }
-                }
-
-                if (items.length || vehiclesLength.current || first) {
-                  if (trip || journey?.vehicle?.id) {
-                    for (const item of items) {
-                      if (
-                        (trip && trip.id === item.trip_id) ||
-                        journey?.vehicle?.id === item.id
-                      ) {
-                        if (first) setClickedVehicleMarker(item.id);
-                        setTripVehicle(item);
-                        break;
-                      }
-                    }
-                  }
-
-                  vehiclesLength.current = items.length;
-                  setVehicles(items);
-                }
-              });
+              response.json().then(handleItems);
 
               setLoadingBuses(false);
             }
@@ -792,7 +799,7 @@ export default function BigMap(
       // journey mode
       if (journey?.id?.toString() === props.journeyId) {
         if (journeyIsCurrent) {
-          loadVehicles(true);
+          loadVehicles(true, journey.live);
         }
       } else {
         setTrip(undefined);

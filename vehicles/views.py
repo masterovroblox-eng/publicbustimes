@@ -358,57 +358,26 @@ def respond_conditionally(request, response):
     )
 
 
-@require_safe
-def vehicles_json(request) -> JsonResponse:
-    try:
-        bounds = get_bounding_box(request)
-    except KeyError:
-        bounds = None
-    except (GEOSException, ValueError):
-        raise BadRequest
+def get_vehicle_locations(
+    *,
+    vehicle_ids=None,
+    service_ids=None,
+    operator_ids=None,
+    trip_id=None,
+    stop_times=None,
+):
+    """Fetch live vehicle locations from Redis (and enrich with cached/db journey info).
 
-    vehicle_ids = None
+    Provide exactly one of vehicle_ids, service_ids, or operator_ids.
+
+    `stop_times` (optional) is a pre-fetched list of StopTime objects for `trip_id`,
+    reused when computing progress/delay for the matching live vehicle.
+    """
     set_names = None
-    service_ids = None
-    operator_ids = None
-
-    if bounds is not None:
-        # ids of vehicles within box
-        xmin, ymin, xmax, ymax = bounds.extent
-
-        try:
-            # convert to kilometres (only for Redis to convert back to degrees)
-            width = haversine((ymin, xmax), (ymin, xmin))
-            height = haversine((ymin, xmax), (ymax, xmax))
-        except ValueError:
-            raise BadRequest
-
-        vehicle_ids = redis_client.geosearch(
-            "vehicle_location_locations",
-            longitude=str((xmax + xmin) / 2),
-            latitude=str((ymax + ymin) / 2),
-            unit="km",
-            width=str(width),
-            height=str(height),
-        )
-
-    elif "service" in request.GET:
-        try:
-            service_ids = [
-                int(service_id) for service_id in request.GET["service"].split(",")
-            ]
-        except ValueError:
-            raise BadRequest
+    if service_ids:
         set_names = [f"service{service_id}vehicles" for service_id in service_ids]
-    elif "operator" in request.GET:
-        operator_ids = request.GET["operator"].split(",")
+    elif operator_ids:
         set_names = [f"operator{operator_id}vehicles" for operator_id in operator_ids]
-    elif "id" in request.GET:
-        # specified vehicle ids
-        vehicle_ids = request.GET["id"].split(",")
-    else:
-        # ids of all vehicles
-        vehicle_ids = redis_client.zrange("vehicle_location_locations", 0, -1)
 
     if set_names:
         vehicle_ids = list(redis_client.sunion(set_names))
@@ -463,11 +432,6 @@ def vehicles_json(request) -> JsonResponse:
         vehicles = {}
 
     locations = []
-
-    trip = request.GET.get("trip")
-    if trip:
-        trip = int(trip)
-
     journeys_to_cache_later = {}
 
     for vehicle_id, item in zip(vehicle_ids, vehicle_locations):
@@ -498,12 +462,16 @@ def vehicles_json(request) -> JsonResponse:
                         )
                     item.update(journey)
 
+            matching_trip = trip_id is not None and item.get("trip_id") == trip_id
             if (
                 "progress" not in item
                 and "trip_id" in item
-                and (len(vehicle_ids) == 1 or trip and item["trip_id"] == trip)
+                and (len(vehicle_ids) == 1 or matching_trip)
             ):
-                add_progress_and_delay(item)
+                add_progress_and_delay(
+                    item,
+                    stop_times=stop_times if matching_trip else None,
+                )
 
         if (
             service_ids
@@ -518,6 +486,69 @@ def vehicles_json(request) -> JsonResponse:
 
     if journeys_to_cache_later:
         cache.set_many(journeys_to_cache_later, 3600)  # an hour
+
+    return locations
+
+
+@require_safe
+def vehicles_json(request) -> JsonResponse:
+    try:
+        bounds = get_bounding_box(request)
+    except KeyError:
+        bounds = None
+    except (GEOSException, ValueError):
+        raise BadRequest
+
+    vehicle_ids = None
+    service_ids = None
+    operator_ids = None
+
+    if bounds is not None:
+        # ids of vehicles within box
+        xmin, ymin, xmax, ymax = bounds.extent
+
+        try:
+            # convert to kilometres (only for Redis to convert back to degrees)
+            width = haversine((ymin, xmax), (ymin, xmin))
+            height = haversine((ymin, xmax), (ymax, xmax))
+        except ValueError:
+            raise BadRequest
+
+        vehicle_ids = redis_client.geosearch(
+            "vehicle_location_locations",
+            longitude=str((xmax + xmin) / 2),
+            latitude=str((ymax + ymin) / 2),
+            unit="km",
+            width=str(width),
+            height=str(height),
+        )
+
+    elif "service" in request.GET:
+        try:
+            service_ids = [
+                int(service_id) for service_id in request.GET["service"].split(",")
+            ]
+        except ValueError:
+            raise BadRequest
+    elif "operator" in request.GET:
+        operator_ids = request.GET["operator"].split(",")
+    elif "id" in request.GET:
+        # specified vehicle ids
+        vehicle_ids = request.GET["id"].split(",")
+    else:
+        # ids of all vehicles
+        vehicle_ids = redis_client.zrange("vehicle_location_locations", 0, -1)
+
+    trip_id = request.GET.get("trip")
+    if trip_id:
+        trip_id = int(trip_id)
+
+    locations = get_vehicle_locations(
+        vehicle_ids=vehicle_ids,
+        service_ids=service_ids,
+        operator_ids=operator_ids,
+        trip_id=trip_id,
+    )
 
     response = JsonResponse(locations, safe=False)
 

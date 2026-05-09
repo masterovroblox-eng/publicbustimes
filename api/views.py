@@ -23,6 +23,7 @@ from vehicles.models import (
     VehicleType,
 )
 from vehicles.utils import redis_client
+from vehicles.views import get_vehicle_locations
 
 from sql_util.utils import Exists
 from haversine import Unit, haversine_vector
@@ -171,6 +172,12 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = filters.VehicleJourneyFilter
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == "details":
+            qs = qs.select_related("service", "trip__route__service", "trip__operator")
+        return qs
+
     @staticmethod
     def set_actual_departure_times(stop_times, locations):
         stops = [st for st in stop_times if st.stop and st.stop.latlong]
@@ -249,6 +256,12 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                 "id": instance.service_id,
                 "slug": instance.service.slug,
             }
+            if locations and instance.vehicle_id:
+                extra_data["live"] = get_vehicle_locations(
+                    vehicle_ids=[instance.vehicle_id],
+                    trip_id=instance.trip_id,
+                    stop_times=(instance.trip.stops if instance.trip else None),
+                )
 
         if not instance.trip and instance.vehicle.operator:
             extra_data["operator"] = {
