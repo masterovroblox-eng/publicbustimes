@@ -260,6 +260,7 @@ class Command(BaseCommand):
                 direction = line[11:12]
                 description = line[12:80].decode().strip()
                 if route_code in self.routes:
+                    self.route.revision_number = 0
                     self.route = self.routes[route_code]
                     if direction == b"O":
                         self.route.service.description = description
@@ -353,9 +354,6 @@ class Command(BaseCommand):
                         or calendar.start_date < self.route.start_date
                     ):
                         self.route.start_date = calendar.start_date
-                        self.route.revision_number = calendar.start_date.strftime(
-                            "%Y%m%d"
-                        )
 
                 elif identity == b"QI":  # intermediate stop
                     timing_status = line[26:28]
