@@ -1,6 +1,5 @@
 import autoslug.fields
 import busstops.fields
-import django.contrib.postgres.operations
 import django.db.models.deletion
 import django.db.models.functions.datetime
 import django.db.models.functions.text
@@ -614,47 +613,47 @@ class Migration(migrations.Migration):
             name='slug',
             field=busstops.fields.AutoSlugField(editable=True, populate_from=vehicles.models.vehicle_slug, unique=True),
         ),
-        django.contrib.postgres.operations.AddIndexConcurrently(
+        migrations.AddIndex(
             model_name='vehiclejourney',
             index=models.Index(models.F('service'), models.F('date'), condition=models.Q(('date__isnull', False)), name='service_date'),
         ),
-        django.contrib.postgres.operations.AddIndexConcurrently(
+        migrations.AddIndex(
             model_name='vehiclejourney',
             index=models.Index(models.F('vehicle'), models.F('date'), condition=models.Q(('date__isnull', False), ('vehicle__isnull', False)), name='vehicle_date'),
         ),
-        django.contrib.postgres.operations.AddIndexConcurrently(
+        migrations.AddIndex(
             model_name='vehiclejourney',
             index=models.Index(models.F('service'), models.F('date'), name='vehiclejourney_service_date'),
         ),
-        django.contrib.postgres.operations.AddIndexConcurrently(
+        migrations.AddIndex(
             model_name='vehiclejourney',
             index=models.Index(models.F('vehicle'), models.F('date'), condition=models.Q(('vehicle__isnull', False)), name='vehiclejourney_vehicle_date'),
         ),
-        django.contrib.postgres.operations.AddIndexConcurrently(
+        migrations.AddIndex(
             model_name='vehiclejourney',
             index=models.Index(models.F('trip'), models.F('date'), condition=models.Q(('trip__isnull', False)), name='vehiclejourney_trip_date'),
         ),
-        django.contrib.postgres.operations.RemoveIndexConcurrently(
+        migrations.RemoveIndex(
             model_name='vehiclejourney',
             name='service_datetime_date',
         ),
-        django.contrib.postgres.operations.RemoveIndexConcurrently(
+        migrations.RemoveIndex(
             model_name='vehiclejourney',
             name='vehicle_datetime_date',
         ),
-        django.contrib.postgres.operations.RemoveIndexConcurrently(
+        migrations.RemoveIndex(
             model_name='vehiclejourney',
             name='service_date',
         ),
-        django.contrib.postgres.operations.RemoveIndexConcurrently(
+        migrations.RemoveIndex(
             model_name='vehiclejourney',
             name='vehicle_date',
         ),
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
-                    sql='DROP INDEX CONCURRENTLY IF EXISTS vehicles_vehiclejourney_service_id_b5ad5fe9',
-                    reverse_sql='CREATE INDEX CONCURRENTLY vehicles_vehiclejourney_service_id_b5ad5fe9 ON "vehicles_vehiclejourney" ("service_id")',
+                    sql='DROP INDEX IF EXISTS vehicles_vehiclejourney_service_id_b5ad5fe9',
+                    reverse_sql='CREATE INDEX vehicles_vehiclejourney_service_id_b5ad5fe9 ON "vehicles_vehiclejourney" ("service_id")',
                 ),
             ],
             state_operations=[
@@ -668,8 +667,8 @@ class Migration(migrations.Migration):
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
-                    sql='DROP INDEX CONCURRENTLY IF EXISTS vehicles_vehiclejourney_trip_id_f6cf407e',
-                    reverse_sql='CREATE INDEX CONCURRENTLY vehicles_vehiclejourney_trip_id_f6cf407e ON "vehicles_vehiclejourney" ("trip_id")',
+                    sql='DROP INDEX IF EXISTS vehicles_vehiclejourney_trip_id_f6cf407e',
+                    reverse_sql='CREATE INDEX vehicles_vehiclejourney_trip_id_f6cf407e ON "vehicles_vehiclejourney" ("trip_id")',
                 ),
             ],
             state_operations=[
@@ -683,8 +682,8 @@ class Migration(migrations.Migration):
         migrations.SeparateDatabaseAndState(
             database_operations=[
                 migrations.RunSQL(
-                    sql='DROP INDEX CONCURRENTLY IF EXISTS vehicles_vehiclejourney_vehicle_id_41154c8a',
-                    reverse_sql='CREATE INDEX CONCURRENTLY vehicles_vehiclejourney_vehicle_id_41154c8a ON "vehicles_vehiclejourney" ("vehicle_id")',
+                    sql='DROP INDEX IF EXISTS vehicles_vehiclejourney_vehicle_id_41154c8a',
+                    reverse_sql='CREATE INDEX vehicles_vehiclejourney_vehicle_id_41154c8a ON "vehicles_vehiclejourney" ("vehicle_id")',
                 ),
             ],
             state_operations=[
