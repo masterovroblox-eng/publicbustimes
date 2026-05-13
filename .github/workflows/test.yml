@@ -24,16 +24,9 @@ jobs:
     - run: npm run lint
     - run: npm run build
 
-    - uses: actions/upload-artifact@v7
-      with:
-        name: dist
-        path: busstops/static
-        if-no-files-found: error
-
   test-backend:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
-    needs: test-frontend
     container:
       image: ghcr.io/jclgoodwin/bustimes.org/bustimes-base:3.14
 
@@ -69,20 +62,11 @@ jobs:
 
     - run: uv sync --group test --frozen
 
-    - run: rm -r busstops/static
-
-    - uses: actions/download-artifact@v8
-      with:
-        name: dist
-        path: busstops/static
-
     - name: run tests
       env:
         DATABASE_URL: postgis://postgres:postgres@postgres/postgres
         SECRET_KEY: secret
-      run: |
-        uv run ./manage.py collectstatic --noinput && \
-        uv run coverage run --parallel-mode --concurrency=multiprocessing ./manage.py test --parallel=2 --keepdb --durations 10
+      run: uv run coverage run --parallel-mode --concurrency=multiprocessing ./manage.py test --parallel=2 --keepdb --durations 10
 
     - name: generate coverage report
       run: |
