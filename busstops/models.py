@@ -973,14 +973,14 @@ class Service(models.Model):
 
         cache_key = [
             str(self.id),
-            str(self.modified_at.timestamp()),
+            str(int(self.modified_at.timestamp())),
             str(detailed),
         ]
         if line_names:
             cache_key += line_names
         if also_services:
             cache_key += [
-                f"{s.id}:{self.modified_at.timestamp()}" for s in also_services
+                f"{s.id}:{int(self.modified_at.timestamp())}" for s in also_services
             ]
         cache_key += [str(r.id) for r in timetable.current_routes]
 

@@ -6,7 +6,7 @@ from functools import cached_property, cmp_to_key, partial
 
 from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, Value
 from django.utils.html import format_html
 from django.utils.timezone import localdate
 from sql_util.utils import Exists
@@ -61,6 +61,8 @@ class Timetable:
         routes = list(routes.order_by("id").select_related("source"))
         self.routes = self.current_routes = routes
         # self.current_routes is a subset of self.routes
+        self.yesterday = None
+        self.yesterday_routes = []
 
         self.date = date
         self.detailed = detailed
@@ -135,6 +137,8 @@ class Timetable:
         # consider revision numbers:
         if self.date:
             self.current_routes = get_routes(routes, self.date)
+            self.yesterday = self.date - datetime.timedelta(days=1)
+            self.yesterday_routes = get_routes(routes, self.yesterday)
 
         if not self.calendar:
             if self.calendars:
@@ -142,6 +146,11 @@ class Timetable:
                 self.calendar_ids = list(
                     get_calendars(
                         self.date, calendar_ids, scotland=scotland
+                    ).values_list("id", flat=True)
+                )
+                self.yesterday_calendar_ids = list(
+                    get_calendars(
+                        self.yesterday, calendar_ids, scotland=scotland
                     ).values_list("id", flat=True)
                 )
 
@@ -173,41 +182,72 @@ class Timetable:
                         trip.inbound = not trip.inbound
 
     def render(self):
-        trips = Trip.objects.filter(route__in=self.current_routes)
+        one_day = datetime.timedelta(days=1)
+
+        today_q = Q(route__in=self.current_routes)
+        yesterday_q = Q(route__in=self.yesterday_routes, start__gte=one_day)
+
         if not self.calendar:
             if self.calendars:
-                trips = trips.filter(
-                    Q(calendar__in=self.calendar_ids) | Q(calendar=None)
+                today_q &= Q(calendar__in=self.calendar_ids) | Q(calendar=None)
+                yesterday_q &= Q(calendar__in=self.yesterday_calendar_ids) | Q(
+                    calendar=None
                 )
+                # today_calendar_ids = set(self.calendar_ids) | {None}
             else:
-                trips = trips.filter(calendar=None)
+                today_q &= Q(calendar=None)
+                yesterday_q &= Q(calendar=None)
+                # today_calendar_ids = {None}
         elif self.calendar_options:
-            trips = trips.filter(calendar=self.calendar)
+            today_q &= Q(calendar=self.calendar)
+            if self.yesterday and self.calendar.allows(self.yesterday):
+                yesterday_q &= Q(calendar=self.calendar)
+            else:
+                yesterday_q = Q(pk__in=[])
+        elif self.yesterday and not self.calendar.allows(self.yesterday):
+            yesterday_q = Q(pk__in=[])
 
-        trips = trips.prefetch_related(
-            Prefetch(
-                "stoptime_set",
-                queryset=StopTime.objects.annotate(note_ids=ArrayAgg("notes"))
-                .filter(Q(pick_up=True) | Q(set_down=True))
-                .order_by("trip_id", "id"),
-                to_attr="times",
-            ),
-            Prefetch(
-                "notes", queryset=Note.objects.annotate(stoptimes=Exists("stoptime"))
-            ),
+        prefetch_times = Prefetch(
+            "stoptime_set",
+            queryset=StopTime.objects.annotate(note_ids=ArrayAgg("notes"))
+            .filter(Q(pick_up=True) | Q(set_down=True))
+            .order_by("trip_id", "id"),
+            to_attr="times",
         )
+        prefetch_notes = Prefetch(
+            "notes", queryset=Note.objects.annotate(stoptimes=Exists("stoptime"))
+        )
+        trips = Trip.objects.prefetch_related(prefetch_times, prefetch_notes)
 
         if self.detailed:
             trips = trips.select_related("garage", "vehicle_type")
+
+        trips = (
+            trips.filter(yesterday_q)
+            .annotate(yesterday=Value(True))
+            .union(trips.filter(today_q).annotate(yesterday=Value(False)))
+        )
 
         if len(trips) > 1500:
             self.date = None
             return
 
         routes = {route.id: route for route in self.current_routes}
+        for route in self.yesterday_routes:
+            routes.setdefault(route.id, route)
 
         for trip in trips:
             trip.route = routes[trip.route_id]
+            if trip.yesterday:
+                # yesterday's after-midnight trip: shift back 24h so it
+                # appears at its actual real-world time today
+                trip.start -= one_day
+                trip.end -= one_day
+                for stoptime in trip.times:
+                    if stoptime.arrival is not None:
+                        stoptime.arrival -= one_day
+                    if stoptime.departure is not None:
+                        stoptime.departure -= one_day
 
         if len(self.current_routes) > 1:
             self.correct_directions(trips)
