@@ -60,7 +60,7 @@ jobs:
 
     - uses: astral-sh/setup-uv@v7
 
-    - run: uv sync --group test --frozen
+    - run: uv sync --group test --frozen && mkdir /staticfiles
 
     - name: run tests
       env:
