@@ -1,5 +1,6 @@
 import datetime
 import graphlib
+from copy import copy
 from dataclasses import dataclass
 from difflib import Differ
 from functools import cached_property, cmp_to_key, partial
@@ -27,8 +28,8 @@ def compare_trips(rows, trip_ids, a, b):
     b_top = rows.index(b.top)
     b_bottom = rows.index(b.bottom)
 
-    a_index = trip_ids.index(a.id)
-    b_index = trip_ids.index(b.id)
+    a_index = trip_ids.index(id(a))
+    b_index = trip_ids.index(id(b))
 
     for row in rows[max(a_top, b_top) : min(a_bottom, b_bottom) + 1]:
         if row.times[a_index] and row.times[b_index]:
@@ -240,9 +241,13 @@ class Timetable:
             trip.route = routes[trip.route_id]
             if trip.yesterday:
                 # yesterday's after-midnight trip: shift back 24h so it
-                # appears at its actual real-world time today
+                # appears at its actual real-world time today.
+                # union returns two Trip instances per pk (yesterday=True/False)
+                # which share the prefetched stoptime list, so copy it before
+                # mutating, or the today-version would also appear shifted
                 trip.start -= one_day
                 trip.end -= one_day
+                trip.times = [copy(st) for st in trip.times]
                 for stoptime in trip.times:
                     if stoptime.arrival is not None:
                         stoptime.arrival -= one_day
@@ -747,21 +752,23 @@ class Grouping:
                         a_time = row.times[a_index].departure_or_arrival()
                         b_time = row.times[b_index].departure_or_arrival()
                         if a_time > b_time:  # a after b
-                            sorter.add(a.id, b.id)
+                            sorter.add(id(a), id(b))
                         elif a_time < b_time:  # a before b
-                            sorter.add(b.id, a.id)
+                            sorter.add(id(b), id(a))
                         elif b.top is a.bottom:
-                            sorter.add(b.id, a.id)
+                            sorter.add(id(b), id(a))
                         break
 
-        trip_ids = [trip.id for trip in self.trips]
+        # use python id(), not trip.id: a trip in yesterday_q can also match
+        # today_q (same DB row, two instances), and trip.id collides
+        trip_ids = [id(trip) for trip in self.trips]
         try:
             indices = [trip_ids.index(trip_id) for trip_id in sorter.static_order()]
             assert len(trip_ids) == len(indices)
             self.trips = [self.trips[i] for i in indices]
         except (graphlib.CycleError, AssertionError):
             self.trips.sort(key=cmp_to_key(partial(compare_trips, self.rows, trip_ids)))
-            new_trip_ids = [trip.id for trip in self.trips]
+            new_trip_ids = [id(trip) for trip in self.trips]
             indices = [trip_ids.index(trip_id) for trip_id in new_trip_ids]
 
         for row in rows:
