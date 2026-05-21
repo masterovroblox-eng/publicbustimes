@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from sql_util.utils import SubqueryCount
 
+from bustimes.admin import log_change
 from .models import OperatorUser, User, Invitation
 
 
@@ -75,10 +76,12 @@ class UserAdmin(admin.ModelAdmin):
 
     def trust(self, request, queryset):
         count = queryset.order_by().update(trusted=True)
+        log_change(request, queryset, ["trusted"])
         self.message_user(request, f"Trusted {count} users")
 
     def distrust(self, request, queryset):
         count = queryset.order_by().update(trusted=False)
+        log_change(request, queryset, ["trusted"])
         self.message_user(request, f"Disusted {count} users")
 
 

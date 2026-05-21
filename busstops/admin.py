@@ -5,7 +5,7 @@ from django.db.models.aggregates import StringAgg
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db import transaction
 from django.db.models import CharField, Exists, F, OuterRef, Q, Value
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Now
 from django.urls import reverse
 from django.utils.html import format_html
 from sql_util.utils import SubqueryCount
@@ -331,12 +331,12 @@ class ServiceAdmin(GISModelAdmin):
         return super().get_search_results(request, queryset, search_term)
 
     def current_false(self, request, queryset):
-        result = queryset.order_by().update(current=False)
+        result = queryset.order_by().update(current=False, modified_at=Now())
         log_change(request, queryset, ["current"])
         self.message_user(request, f"{result}")
 
     def public_use_true(self, request, queryset):
-        result = queryset.order_by().update(public_use=True)
+        result = queryset.order_by().update(public_use=True, modified_at=Now())
         log_change(request, queryset, ["public_use"])
         self.message_user(request, f"{result}")
 

@@ -5,7 +5,7 @@ from django.forms import ModelForm, Textarea
 from django.db.models import Func, Value
 from django.db.models.aggregates import StringAgg
 from django.db.models import Exists, OuterRef, F, CharField
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Now
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
@@ -104,12 +104,12 @@ class TimetableDataSourceAdmin(admin.ModelAdmin):
         return queryset
 
     def activate(self, request, queryset):
-        count = queryset.order_by().update(active=True)
+        count = queryset.order_by().update(active=True, modified_at=Now())
         log_change(request, queryset, ["active"])
         self.message_user(request, f"Activated {count}")
 
     def deactivate(self, request, queryset):
-        count = queryset.order_by().update(active=False)
+        count = queryset.order_by().update(active=False, modified_at=Now())
         log_change(request, queryset, ["active"])
         self.message_user(request, f"Deactivated {count}")
 
