@@ -474,9 +474,11 @@ def vehicles_json(request) -> JsonResponse:
 
     locations = []
 
-    trip = request.GET.get("trip")
-    if trip:
-        trip = int(trip)
+    if trip := request.GET.get("trip"):
+        try:
+            trip = int(trip)
+        except ValueError:
+            return cachable_400()
 
     journeys_to_cache_later = {}
 
