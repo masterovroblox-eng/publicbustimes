@@ -18,11 +18,11 @@ from django.db import IntegrityError, OperationalError, connection, transaction
 from django.db.models import Case, F, Max, OuterRef, Q, When, Value
 from django.db.models.aggregates import StringAgg
 from django.db.models.functions import Coalesce, Now
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.cache import get_conditional_response, set_response_etag
+from django.utils.cache import get_conditional_response, set_response_etag, patch_cache_control
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
@@ -490,6 +490,12 @@ def get_vehicle_locations(
     return locations
 
 
+def cachable_400():
+    response = HttpResponseBadRequest()
+    patch_cache_control(response, max_age=3600)
+    return response
+
+
 @require_safe
 def vehicles_json(request) -> JsonResponse:
     try:
@@ -497,7 +503,7 @@ def vehicles_json(request) -> JsonResponse:
     except KeyError:
         bounds = None
     except (GEOSException, ValueError):
-        raise BadRequest
+        return cachable_400()
 
     vehicle_ids = None
     service_ids = None
@@ -512,7 +518,7 @@ def vehicles_json(request) -> JsonResponse:
             width = haversine((ymin, xmax), (ymin, xmin))
             height = haversine((ymin, xmax), (ymax, xmax))
         except ValueError:
-            raise BadRequest
+            return cachable_400()
 
         vehicle_ids = redis_client.geosearch(
             "vehicle_location_locations",
@@ -529,7 +535,7 @@ def vehicles_json(request) -> JsonResponse:
                 int(service_id) for service_id in request.GET["service"].split(",")
             ]
         except ValueError:
-            raise BadRequest
+            return cachable_400()
     elif "operator" in request.GET:
         operator_ids = request.GET["operator"].split(",")
     elif "id" in request.GET:
@@ -539,16 +545,21 @@ def vehicles_json(request) -> JsonResponse:
         # ids of all vehicles
         vehicle_ids = redis_client.zrange("vehicle_location_locations", 0, -1)
 
-    trip_id = request.GET.get("trip")
-    if trip_id:
-        trip_id = int(trip_id)
+    if trip_id := request.GET.get("trip"):
+        try:
+            trip_id = int(trip_id)
+        except ValueError:
+            return cachable_400()
 
-    locations = get_vehicle_locations(
-        vehicle_ids=vehicle_ids,
-        service_ids=service_ids,
-        operator_ids=operator_ids,
-        trip_id=trip_id,
-    )
+    try:
+        locations = get_vehicle_locations(
+            vehicle_ids=vehicle_ids,
+            service_ids=service_ids,
+            operator_ids=operator_ids,
+            trip_id=trip_id,
+        )
+    except BadRequest:
+        return cachable_400()
 
     response = JsonResponse(locations, safe=False)
 
