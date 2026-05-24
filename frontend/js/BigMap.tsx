@@ -794,9 +794,6 @@ export default function BigMap(
   );
 
   React.useEffect(() => {
-    if (vehiclesTimeout.current) {
-      clearTimeout(vehiclesTimeout.current);
-    }
     setAppendedLocations([]);
     if (props.tripId) {
       // trip mode
@@ -846,6 +843,11 @@ export default function BigMap(
     } else {
       loadVehicles();
     }
+    return () => {
+      if (vehiclesTimeout.current) {
+        clearTimeout(vehiclesTimeout.current);
+      }
+    };
   }, [
     props.tripId,
     trip,
