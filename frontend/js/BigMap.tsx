@@ -1046,45 +1046,8 @@ export default function BigMap(
           onMapInit={handleMapInit}
           interactiveLayerIds={["stops", "vehicles", "locations"]}
         >
-          {/* bounds on the map for debugging */}
-          {/* bounds ? (
-            <Source
-              type="geojson"
-              data={{
-                type: "Feature",
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [
-                    [
-                      [bounds.getWest(), bounds.getNorth()],
-                      [bounds.getEast(), bounds.getNorth()],
-                      [bounds.getEast(), bounds.getSouth()],
-                      [bounds.getWest(), bounds.getSouth()],
-                      [bounds.getWest(), bounds.getNorth()],
-                    ],
-                  ],
-                },
-              }}
-            >
-              <Layer
-                {...{
-                  id: "bounds",
-                  type: "line",
-                  paint: {
-                    "line-color": "#000",
-                    "line-width": 2,
-                  },
-                }}
-              />
-            </Source>
-          ) : null*/}
-
           {props.mode === MapMode.Trip && trip ? (
             <Route times={trip.times} />
-          ) : null}
-
-          {props.mode === MapMode.Journey && journey?.trip?.times ? (
-            <Route times={journey.trip.times} />
           ) : null}
 
           {/* props.mode === MapMode.Slippy ? <SlippyMapHash /> : null */}
@@ -1111,6 +1074,14 @@ export default function BigMap(
             />
           ) : null}
 
+          {props.mode === MapMode.Journey && journeyLocations.length ? (
+            <Locations locations={journeyLocations} />
+          ) : null}
+
+          {props.mode === MapMode.Journey && journey?.trip?.times ? (
+            <Route times={journey.trip.times} />
+          ) : null}
+
           {vehicles && showBuses ? (
             <Vehicles
               vehicles={vehicles}
@@ -1130,10 +1101,6 @@ export default function BigMap(
               {!showBuses ? <div>Zoom in to see buses</div> : null}
               {showBuses && loadingBuses ? <div>Loading…</div> : null}
             </div>
-          ) : null}
-
-          {props.mode === MapMode.Journey && journeyLocations.length ? (
-            <Locations locations={journeyLocations} />
           ) : null}
 
           {hoveredLocation ? (
