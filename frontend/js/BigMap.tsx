@@ -404,6 +404,19 @@ function TripSidebar(props: {
   );
 }
 
+const cameFromVehiclesPage = (() => {
+  if (typeof document === "undefined" || !document.referrer) return false;
+  try {
+    const url = new URL(document.referrer);
+    return (
+      url.origin === window.location.origin &&
+      url.pathname.startsWith("/vehicles/")
+    );
+  } catch {
+    return false;
+  }
+})();
+
 function JourneySidebar(props: {
   journey: VehicleJourney;
   journeyId: string;
@@ -413,6 +426,9 @@ function JourneySidebar(props: {
   let className = "trip-timetable map-sidebar";
 
   const journey = props.journey;
+
+  const showNavigation =
+    cameFromVehiclesPage && (journey.previous || journey.next);
 
   const _operator = journey.operator || journey.trip?.operator;
   let operator: ReactElement | undefined;
@@ -462,6 +478,24 @@ function JourneySidebar(props: {
           {operator}
           {service}
         </ul>
+      ) : null}
+      {showNavigation ? (
+        <div className="navigation">
+          {journey.previous ? (
+            <p className="previous">
+              <Link href={`/journeys/${journey.previous.id}`}>
+                &larr; {journey.previous.datetime.slice(11, 16)}
+              </Link>
+            </p>
+          ) : null}
+          {journey.next ? (
+            <p className="next">
+              <Link href={`/journeys/${journey.next.id}`}>
+                {journey.next.datetime.slice(11, 16)} &rarr;
+              </Link>
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {journey.trip ? null : <p>To {journey.destination}</p>}
       {journey.trip?.times ? (

@@ -55,6 +55,8 @@ export type VehicleJourney = {
     name: string;
   };
   live?: Vehicle[];
+  next?: { id: number; datetime: string };
+  previous?: { id: number; datetime: string };
 };
 
 function calcBearing(

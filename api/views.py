@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Q
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 import numpy as np
 
@@ -293,6 +294,29 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                 "noc": instance.vehicle.operator.noc,
                 "slug": instance.vehicle.operator.slug,
                 "name": instance.vehicle.operator.name,
+            }
+
+        next_previous_filter = {
+            "date": instance.date,
+            "vehicle_id": instance.vehicle_id,
+        }
+        try:
+            next_journey = instance.get_next_by_datetime(**next_previous_filter)
+        except VehicleJourney.DoesNotExist:
+            pass
+        else:
+            extra_data["next"] = {
+                "id": next_journey.id,
+                "datetime": timezone.localtime(next_journey.datetime),
+            }
+        try:
+            previous_journey = instance.get_previous_by_datetime(**next_previous_filter)
+        except VehicleJourney.DoesNotExist:
+            pass
+        else:
+            extra_data["previous"] = {
+                "id": previous_journey.id,
+                "datetime": timezone.localtime(previous_journey.datetime),
             }
 
         return Response(serializer.data | extra_data)
