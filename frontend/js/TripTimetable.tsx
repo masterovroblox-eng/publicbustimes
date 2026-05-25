@@ -60,7 +60,7 @@ function Row({
 }: {
   stop: TripTime;
   onMouseEnter?: (stop: TripTime) => void;
-  vehicle?: Vehicle;
+  vehicle?: Vehicle | null;
   aimedColumn?: boolean;
   highlightedStop?: string;
   first: boolean;
@@ -176,7 +176,7 @@ const TripTimetable = React.memo(function TripTimetable({
 }: {
   trip: Trip;
   onMouseEnter?: (stop: TripTime) => void;
-  vehicle?: Vehicle;
+  vehicle?: Vehicle | null;
   highlightedStop?: string;
 }) {
   const [showEarlierStops, setShowEarlierStops] = React.useState(false);

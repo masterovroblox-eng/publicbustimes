@@ -346,7 +346,7 @@ const Vehicles = memo(function Vehicles({
 function TripSidebar(props: {
   trip?: Trip;
   tripId?: string;
-  vehicle?: VehicleLocation;
+  vehicle?: VehicleLocation | null;
   highlightedStop?: string;
 }) {
   let className = "trip-timetable map-sidebar";
@@ -408,7 +408,7 @@ function JourneySidebar(props: {
   journey: VehicleJourney;
   journeyId: string;
   highlightedStop?: string;
-  vehicle?: VehicleLocation;
+  vehicle?: VehicleLocation | null;
 }) {
   let className = "trip-timetable map-sidebar";
 
@@ -588,7 +588,9 @@ export default function BigMap(
     Stop | undefined
   >();
 
-  const [tripVehicle, setTripVehicle] = React.useState<VehicleLocation>();
+  const [tripVehicle, setTripVehicle] = React.useState<VehicleLocation | null>(
+    null,
+  );
 
   const initialViewState = useRef(window.INITIAL_VIEW_STATE);
 
