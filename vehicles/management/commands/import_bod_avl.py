@@ -431,10 +431,12 @@ class Command(ImportLiveVehiclesCommand):
 
         if origin_aimed_departure_time:
             difference = origin_aimed_departure_time - dt
-            if difference > timedelta(
-                hours=20
-            ):  # more than 20 hours in the future? subtract a day
+            twenty_hours = timedelta(hours=20)
+            if difference > twenty_hours:
+                # more than 20 hours in the future/past? subtract/add a day
                 origin_aimed_departure_time -= timedelta(days=1)
+            elif difference < -twenty_hours:
+                origin_aimed_departure_time += timedelta(days=1)
 
         latest_journey = vehicle.latest_journey
         if latest_journey:
