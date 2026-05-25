@@ -249,7 +249,7 @@ class Vehicle(models.Model):
     slug = AutoSlugField(populate_from=vehicle_slug, editable=True, unique=True)
     code = models.CharField(max_length=255)
     fleet_number = models.PositiveIntegerField(null=True, blank=True)
-    fleet_code = models.CharField(max_length=24, blank=True)
+    fleet_code = models.CharField(max_length=24, blank=True, db_collation="en_numeric")
     reg = models.CharField(max_length=24, blank=True)
     source = models.ForeignKey(DataSource, models.SET_NULL, null=True, blank=True)
     operator = models.ForeignKey(Operator, models.SET_NULL, null=True, blank=True)
