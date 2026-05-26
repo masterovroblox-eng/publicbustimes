@@ -852,6 +852,11 @@ export default function BigMap(
 
   const handleMoveEnd = React.useCallback(
     (evt: ViewStateChangeEvent) => {
+      const _bounds = evt.target.getBounds();
+      const _zoom = evt.viewState.zoom;
+      setZoom(_zoom);
+      boundsRef.current = _bounds;
+
       if (!evt.originalEvent) {
         return;
       }
@@ -860,11 +865,6 @@ export default function BigMap(
         clearTimeout(vehiclesTimeout.current);
         setLoadingBuses(false);
       }
-
-      const _bounds = evt.target.getBounds();
-      const _zoom = evt.viewState.zoom;
-      setZoom(_zoom);
-      boundsRef.current = _bounds;
 
       if (shouldShowVehicles(_zoom)) {
         if (
