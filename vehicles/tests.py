@@ -406,6 +406,12 @@ class VehiclesTests(TestCase):
         response = self.client.get("/admin/vehicles/vehicle/?duplicate=operator")
         self.assertContains(response, '0 results (<a href="?">6 total</a>')
 
+        # search (fleet_code has a nondeterministic collation, so LIKE
+        # would fail without special handling)
+        Vehicle.objects.filter(id=self.vehicle_1.id).update(fleet_code="DE69")
+        response = self.client.get("/admin/vehicles/vehicle/?q=DE69")
+        self.assertContains(response, '1 result (<a href="?">6 total</a>')
+
         self.client.post(
             "/admin/vehicles/vehicle/",
             {

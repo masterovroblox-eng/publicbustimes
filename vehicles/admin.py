@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db.models import Exists, OuterRef, Q
+from django.db.models.functions import Collate
 from django.db import IntegrityError
 from django.urls import reverse
 from django.utils.html import format_html
@@ -140,7 +141,17 @@ class VehicleAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("vehicle_type", "livery")
     raw_id_fields = ("operator", "source", "latest_journey")
-    search_fields = ("code", "fleet_code", "reg")
+    search_fields = ("code", "fleet_code_searchable", "reg")
+
+    def get_search_results(self, request, queryset, search_term):
+        # fleet_code has a nondeterministic collation, which Postgres
+        # won't allow LIKE against — annotate a deterministic copy
+        if search_term:
+            queryset = queryset.annotate(
+                fleet_code_searchable=Collate("fleet_code", "C"),
+            )
+        return super().get_search_results(request, queryset, search_term)
+
     ordering = ("-id",)
     actions = (
         "copy_livery",
