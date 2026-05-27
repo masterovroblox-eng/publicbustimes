@@ -909,6 +909,7 @@ export default function BigMap(
       if (vehicleId) {
         setClickedVehicleMarker(vehicleId);
         setClickedStopURL(undefined);
+        setHoveredLocation(null);
         setClickedStopFeature(undefined);
         return;
       }
@@ -924,6 +925,7 @@ export default function BigMap(
             const url = feature.properties.url;
             if (url !== clickedStopUrl) {
               setClickedStopURL(url);
+              setHoveredLocation(null);
               if (props.mode === MapMode.Slippy) {
                 const name = getStopName(feature.properties);
 
