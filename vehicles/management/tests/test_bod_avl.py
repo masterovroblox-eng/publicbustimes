@@ -152,7 +152,7 @@ class BusOpenDataVehicleLocationsTest(TestCase):
                 with self.assertNumQueries(0):
                     command.update()
 
-            self.assertEqual(841, len(command.identifiers))
+            self.assertEqual(50, len(command.identifiers))
 
             # status page
 
@@ -165,8 +165,8 @@ class BusOpenDataVehicleLocationsTest(TestCase):
                 <td>00:00:00</td>
                 <td>15:14:46</td>
                 <td>-85 days, 8:45:13.738726</td>
-                <td>841</td>
-                <td>841</td>
+                <td>50</td>
+                <td>50</td>
                 <td>0.0</td>
             </tr>
 """
@@ -176,7 +176,7 @@ class BusOpenDataVehicleLocationsTest(TestCase):
                 <td>00:00:00</td>
                 <td>15:14:46</td>
                 <td>-85 days, 8:45:13.738726</td>
-                <td>841</td>
+                <td>50</td>
                 <td>0</td>
                 <td>0.0</td>
             </tr>""",
