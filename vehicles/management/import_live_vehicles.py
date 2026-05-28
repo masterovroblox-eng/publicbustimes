@@ -542,7 +542,7 @@ class ImportLiveVehiclesCommand(BaseCommand):
                 )
             )
             self.status = self.status[-50:]
-            cache.set(self.status_key, self.status, 800)
+            cache.set(self.status_key, self.status, None)
 
         if time_taken < wait:
             return wait - time_taken
