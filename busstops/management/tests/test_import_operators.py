@@ -61,7 +61,7 @@ class ImportOperatorsTest(TestCase):
                 return_value=mock_overrides,
             ),
         ):
-            with self.assertNumQueries(3163):
+            with self.assertNumQueries(147):
                 call_command("import_noc")
 
             cassette.rewind()
@@ -82,7 +82,7 @@ class ImportOperatorsTest(TestCase):
             with self.assertNumQueries(21):
                 call_command("import_noc")
 
-        self.assertEqual(Operator.objects.count(), 3105)
+        self.assertEqual(Operator.objects.count(), 89)
 
         c2c = Operator.objects.get(noc="CC")
         self.assertEqual(c2c.name, "c2c")
