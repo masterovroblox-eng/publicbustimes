@@ -141,6 +141,7 @@ def liveries_css(request, version=0):
     completed_process = subprocess.run(
         ["lightningcss", "--minify"], input=styles.encode(), capture_output=True
     )
+    completed_process.check_returncode()
     styles = completed_process.stdout
     return HttpResponse(styles, content_type="text/css")
 
