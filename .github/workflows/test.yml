@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     container:
-      image: ghcr.io/jclgoodwin/bustimes.org/bustimes-base:3.14
+      image: ghcr.io/bustimes/bustimes.org/bustimes-base:3.14
 
     permissions:
       # Gives the action the necessary permissions for publishing new
