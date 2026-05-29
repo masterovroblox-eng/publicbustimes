@@ -17,6 +17,7 @@ from .import_gtfsr_ie import Command as GTFSRCommand
 class Command(GTFSRCommand):
     source_name = "Ember"
     vehicle_code_scheme = "Ember"
+    wait = 12
 
     def do_source(self):
         self.tzinfo = ZoneInfo("Europe/London")
