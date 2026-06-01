@@ -12,7 +12,7 @@ from ...models import VehicleJourney
 from ..commands.import_stagecoach_avl import Command
 
 
-@time_machine.travel("2019-11-17T04:32:00.000Z")
+@time_machine.travel("2019-11-17T14:00:01.000Z")
 class StagecoachTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -37,6 +37,8 @@ class StagecoachTest(TestCase):
         fakeredis.FakeStrictRedis(version=7),
     )
     def test_handle(self):
+        """Stagecoach AVL"""
+
         command = Command()
         command.do_source()
         command.operator_codes = ["SDVN"]

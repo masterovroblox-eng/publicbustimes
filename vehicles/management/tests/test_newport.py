@@ -11,7 +11,7 @@ from busstops.models import DataSource, Operator
 from ...models import VehicleJourney
 
 
-class NewportTest(TestCase):
+class GuernseyTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         DataSource.objects.create(
@@ -20,6 +20,8 @@ class NewportTest(TestCase):
         Operator.objects.create(noc="SGUE")
 
     def test(self):
+        """Stagecoach Guernsey (buses.gg) AVL"""
+
         redis_client = fakeredis.FakeStrictRedis(version=7)
 
         with (
@@ -30,7 +32,7 @@ class NewportTest(TestCase):
                 "vehicles.management.import_live_vehicles.redis_client", redis_client
             ),
             mock.patch("vehicles.management.import_live_vehicles.sleep"),
-            time_machine.travel("2025-09-24T06:30:00+00:00", tick=False),
+            time_machine.travel("2025-09-24T06:35:00+00:00", tick=False),
         ):
             with (
                 self.assertNumQueries(28),

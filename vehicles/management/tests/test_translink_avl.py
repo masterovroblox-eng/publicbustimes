@@ -19,6 +19,8 @@ class TranslinkAVLTest(TestCase):
         )
 
     def test(self):
+        """Translink (Northern Ireland) AVL"""
+
         redis_client = fakeredis.FakeStrictRedis(version=7)
 
         with (
@@ -31,7 +33,7 @@ class TranslinkAVLTest(TestCase):
             mock.patch(
                 "vehicles.management.import_live_vehicles.sleep", side_effect=Exception
             ),
-            time_machine.travel("2025-09-24T06:30:00+00:00", tick=False),
+            time_machine.travel("2025-09-27T05:43:00+00:00", tick=False),
         ):
             with self.assertNumQueries(96), self.assertRaises(Exception):
                 call_command("import_translink_avl", "--immediate")

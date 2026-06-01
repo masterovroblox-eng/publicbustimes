@@ -121,15 +121,11 @@ class Command(BaseCommand):
         for service in services:
             service.update_search_vector()
 
-        print(
-            self.source.route_set.exclude(
-                code__in=self.routes.keys(), trip__isnull=False
-            ).delete()
-        )
-        print(
-            self.source.service_set.filter(current=True, route__isnull=True).update(
-                current=False
-            )
+        self.source.route_set.exclude(
+            code__in=self.routes.keys(), trip__isnull=False
+        ).delete()
+        self.source.service_set.filter(current=True, route__isnull=True).update(
+            current=False
         )
         self.source.save(update_fields=["datetime"])
 
