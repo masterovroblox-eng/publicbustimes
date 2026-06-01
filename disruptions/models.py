@@ -85,6 +85,15 @@ class Situation(models.Model):
                     ]
                 return [date_range(validity_periods[0].period)]
 
+        now = timezone.now()
+        if current_periods := [
+            (upper, lower)
+            for (upper, lower) in periods
+            if upper is None or upper >= now
+        ]:
+            # filter out past periods for brevity
+            periods = current_periods
+
         # Group consecutive periods with matching start/end times into runs
         runs = [[0]]
         for i in range(1, len(periods)):
