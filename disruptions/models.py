@@ -106,7 +106,7 @@ class Situation(models.Model):
         for run in runs:
             first = periods[run[0]]
             last = periods[run[-1]]
-            if first[1] and last[1]:
+            if first[0] and first[1] and last[1]:
                 result.append(
                     f"""{time_range(*first)}, {date_range(lower=first[0], upper=last[1])}"""
                 )
