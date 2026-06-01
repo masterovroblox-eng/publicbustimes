@@ -44,6 +44,8 @@ class SituationAdmin(admin.ModelAdmin):
         "participant_ref",
         "source",
         "current",
+        "periods",
+        "services",
         "stops",
         "created_at",
         "modified_at",
@@ -64,6 +66,14 @@ class SituationAdmin(admin.ModelAdmin):
         "data",
     ]
 
+    @admin.display(ordering="periods")
+    def periods(self, obj):
+        return obj.periods
+
+    @admin.display(ordering="services")
+    def services(self, obj):
+        return obj.services
+
     @admin.display(ordering="stops")
     def stops(self, obj):
         return obj.stops
@@ -71,5 +81,9 @@ class SituationAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         if "changelist" in request.resolver_match.view_name:
-            queryset = queryset.annotate(stops=SubqueryCount("consequence__stops"))
+            queryset = queryset.annotate(
+                periods=SubqueryCount("validityperiod"),
+                services=SubqueryCount("consequence__services"),
+                stops=SubqueryCount("consequence__stops"),
+            )
         return queryset

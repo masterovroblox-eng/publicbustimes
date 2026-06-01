@@ -7,6 +7,7 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import XmlLexer
 
+from busstops.models import Service, StopPoint
 from .models import Situation
 
 
@@ -44,6 +45,9 @@ def situation(request, id):
         xml = mark_safe(highlight(xml, XmlLexer(), formatter))
         context["css"] = formatter.get_style_defs()
         context["xml"] = xml
+
+    context["stops"] = StopPoint.objects.filter(consequence__situation=situation)
+    context["services"] = Service.objects.filter(consequence__situation=situation)
 
     return render(
         request,
