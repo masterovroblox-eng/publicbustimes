@@ -33,15 +33,6 @@ jobs:
       image: ghcr.io/bustimes/bustimes.org/bustimes-base:3.14
 
     permissions:
-      # Gives the action the necessary permissions for publishing new
-      # comments in pull requests.
-      pull-requests: write
-
-      # Gives the action the necessary permissions for pushing data to the
-      # python-coverage-comment-action branch, and for editing existing
-      # comments (to avoid publishing multiple comments in the same PR)
-      contents: write
-
       packages: read  # to use the bustimes-base docker image
 
     services:
@@ -76,11 +67,13 @@ jobs:
         SECRET_KEY: secret
       run: uv run coverage run --parallel-mode --concurrency=multiprocessing ./manage.py test --parallel=2 --keepdb --durations 10
 
-    - name: generate coverage report
-      run: uv run coverage combine
+    - name: generate coverage XML
+      run: uv run coverage xml
 
-    - name: Coverage comment
-      if: github.event_name == 'pull_request'
-      uses: py-cov-action/python-coverage-comment-action@b5c9b343bf45af753a29486e9a793d9baf246936
+    - name: Upload coverage report
+      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      uses: actions/upload-code-coverage@v1
       with:
-        GITHUB_TOKEN: ${{ github.token }}
+        file: coverage.xml
+        language: Python
+        label: LABEL
