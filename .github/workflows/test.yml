@@ -34,6 +34,7 @@ jobs:
 
     permissions:
       packages: read  # to use the bustimes-base docker image
+      code-quality: write
 
     services:
       postgres:
