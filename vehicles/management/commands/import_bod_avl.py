@@ -86,13 +86,13 @@ def get_destination_name(destination_ref: str) -> str:
     ):
         q |= Q(atco_code__iexact=f"0{destination_ref}")
 
+    q &= Q(locality__name__isnull=False)
+
     try:
         stop = StopPoint.objects.filter(q).select_related("locality").get()
     except (StopPoint.DoesNotExist, StopPoint.MultipleObjectsReturned):
         return ""
 
-    if not stop.locality or stop.locality.name in stop.common_name:
-        return stop.common_name
     return stop.locality.name
 
 
@@ -484,16 +484,23 @@ class Command(ImportLiveVehiclesCommand):
         if destination_ref := monitored_vehicle_journey.get("DestinationRef"):
             destination_ref = get_destination_ref(destination_ref)
 
+        destination_name = monitored_vehicle_journey.get("DestinationName", "")
+
         if operator_ref == "TFLO":
-            journey.destination = monitored_vehicle_journey.get("DestinationName")
+            journey.destination = destination_name
         else:
+            destination_name = destination_name.replace("_", " ")
+
+            # try getting the stop locality name - usually more descriptive than "Bus_Station"
             if destination_ref and (
                 destination := get_destination_name(destination_ref)
             ):
-                # try getting the stop locality name - usually more descriptive than "Bus_Station"
-                journey.destination = destination
-            elif destination := monitored_vehicle_journey.get("DestinationName"):
-                journey.destination = destination.replace("_", " ")
+                if destination in destination_name:
+                    journey.destination = destination_name
+                else:
+                    journey.destination = destination
+            elif destination_name:
+                journey.destination = destination_name
             else:
                 journey.direction = monitored_vehicle_journey.get("DirectionRef", "")
 
