@@ -16,7 +16,6 @@ from django.utils import timezone
 from django.utils.dateparse import parse_duration
 
 from busstops.models import (
-    Locality,
     Operator,
     OperatorCode,
     Service,
@@ -79,16 +78,22 @@ def get_destination_ref(destination_ref: str) -> str | None:
 
 @functools.cache
 def get_destination_name(destination_ref: str) -> str:
+    q = Q(atco_code__iexact=destination_ref)
+    if (
+        destination_ref.isdigit()
+        and destination_ref[0:1] != "0"
+        and destination_ref[2:3] == "0"
+    ):
+        q |= Q(atco_code__iexact=f"0{destination_ref}")
+
     try:
-        return Locality.objects.get(stoppoint=destination_ref).name
-    except Locality.DoesNotExist:
-        if (
-            destination_ref.isdigit()
-            and destination_ref[0:1] != "0"
-            and destination_ref[2:3] == "0"
-        ):
-            return get_destination_name(f"0{destination_ref}")
-    return ""
+        stop = StopPoint.objects.filter(q).select_related("locality").get()
+    except (StopPoint.DoesNotExist, StopPoint.MultipleObjectsReturned):
+        return ""
+
+    if not stop.locality or stop.locality.name in stop.common_name:
+        return stop.common_name
+    return stop.locality.name
 
 
 def get_line_name_query(line_ref: str) -> Q:
