@@ -11,13 +11,13 @@ class VehicleTypeSerializer(serializers.ModelSerializer):
     double_decker = serializers.SerializerMethodField()
 
     def get_coach(self, obj) -> bool:
-        return obj.style == "coach"
+        return "coach" in obj.style
 
     def get_electric(self, obj) -> bool:
         return obj.fuel == "electric"
 
     def get_double_decker(self, obj) -> bool:
-        return obj.style == "double decker"
+        return "decker" in obj.style
 
     class Meta:
         model = VehicleType
