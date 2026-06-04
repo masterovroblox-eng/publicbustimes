@@ -66,13 +66,26 @@ function Row({
   first: boolean;
   last: boolean;
 }) {
-  const handleMouseEnter = React.useCallback(() => {
-    if (onMouseEnter) {
-      if (stop.stop.location) {
-        onMouseEnter(stop);
+  const handlePointerEnter = React.useCallback(
+    (event: React.PointerEvent) => {
+      // on touch there's no hover, so a tap on the stop-name link should follow
+      // it rather than open the popup (otherwise iOS treats the first tap as a
+      // hover and you have to tap a second time). tapping elsewhere on the row
+      // still opens the popup
+      if (
+        event.pointerType === "touch" &&
+        (event.target as HTMLElement).closest("a")
+      ) {
+        return;
       }
-    }
-  }, [stop, onMouseEnter]);
+      if (onMouseEnter) {
+        if (stop.stop.location) {
+          onMouseEnter(stop);
+        }
+      }
+    },
+    [stop, onMouseEnter],
+  );
 
   let className: string | undefined;
 
@@ -152,7 +165,7 @@ function Row({
 
   return (
     <React.Fragment>
-      <tr className={className} onMouseEnter={handleMouseEnter}>
+      <tr className={className} onPointerEnter={handlePointerEnter}>
         <td className="stop-name" rowSpan={rowSpan}>
           {stopName}
         </td>
