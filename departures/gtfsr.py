@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -10,19 +11,25 @@ from google.transit import gtfs_realtime_pb2
 from bustimes.formatting import format_timedelta
 from vehicles.utils import redis_client
 
+logger = logging.getLogger(__name__)
+
 
 def _get_feed():
     if settings.NTA_API_KEY:
         if not redis_client.set("ntaie_lock", 1, ex=60, nx=True):
             return
         url = "https://api.nationaltransport.ie/gtfsr/v2/TripUpdates"
-        response = requests.get(
-            url, headers={"x-api-key": settings.NTA_API_KEY}, timeout=10
-        )
-        if response.ok:
-            feed = gtfs_realtime_pb2.FeedMessage()
-            feed.ParseFromString(response.content)
-            return feed
+        try:
+            response = requests.get(
+                url, headers={"x-api-key": settings.NTA_API_KEY}, timeout=10
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logger.exception(e)
+            return
+        feed = gtfs_realtime_pb2.FeedMessage()
+        feed.ParseFromString(response.content)
+        return feed
 
 
 def get_trip_updates(feed_name) -> dict:
