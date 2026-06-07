@@ -34,7 +34,6 @@ jobs:
 
     permissions:
       packages: read  # to use the bustimes-base docker image
-      code-quality: write
 
     services:
       postgres:
@@ -68,13 +67,45 @@ jobs:
         SECRET_KEY: secret
       run: uv run coverage run --parallel-mode --concurrency=multiprocessing ./manage.py test --parallel=2 --keepdb --durations 10
 
-    - name: generate coverage XML
-      run: uv run coverage xml
+    - name: generate coverage HTML report
+      run: |
+        uv run coverage combine
+        uv run coverage html
 
-    - name: Upload coverage report
-      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-      uses: actions/upload-code-coverage@v1
+    - name: upload coverage HTML artifact
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
-        file: coverage.xml
-        language: Python
-        label: LABEL
+        name: coverage-html
+        path: htmlcov
+
+  publish-coverage:
+    needs: test-backend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    steps:
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      with:
+        name: coverage-html
+        path: htmlcov
+
+    - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+    - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+      with:
+        path: htmlcov
+
+    - id: deployment
+      uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
