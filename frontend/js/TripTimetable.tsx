@@ -198,14 +198,17 @@ const TripTimetable = React.memo(function TripTimetable({
   const aimedColumn = trip.times?.some(
     (item: TripTime) => item.aimed_arrival_time || item.aimed_departure_time,
   );
-  const actualColumn =
-    vehicle ||
+
+  let actualColumn: string | null = null;
+  if (
     trip.times?.some(
-      (item: TripTime) =>
-        item.actual_departure_time ||
-        item.expected_arrival_time ||
-        item.expected_departure_time,
-    );
+      (item) => item.expected_arrival_time || item.expected_departure_time,
+    )
+  ) {
+    actualColumn = "Ex\u00ADpected";
+  } else if (vehicle || trip.times.some((item) => item.actual_departure_time)) {
+    actualColumn = "Actual";
+  }
 
   let earlierStops = false;
 
@@ -236,7 +239,7 @@ const TripTimetable = React.memo(function TripTimetable({
           <tr>
             <th className="stop-name" />
             {aimedColumn ? <th>Sched&shy;uled</th> : null}
-            {actualColumn ? <th>Actual</th> : null}
+            {actualColumn ? <th>{actualColumn}</th> : null}
           </tr>
         </thead>
         <tbody>
