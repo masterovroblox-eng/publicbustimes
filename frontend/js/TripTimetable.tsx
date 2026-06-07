@@ -74,7 +74,8 @@ function Row({
       // still opens the popup
       if (
         event.pointerType === "touch" &&
-        (event.target as HTMLElement).closest("a")
+        event.target instanceof HTMLElement &&
+        event.target.closest("a")
       ) {
         return;
       }
