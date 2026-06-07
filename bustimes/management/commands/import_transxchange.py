@@ -1560,7 +1560,7 @@ class Command(BaseCommand):
             if file_hash:
                 route_defaults["file_hash"] = file_hash
 
-            route_defaults["code"] = route_code
+            route_defaults["code"] = route_code[-255:]
 
             # TfGM: all files are in a subfolder
             # with a name like "TfGM TXC 260225 OpenData" that changes every release
