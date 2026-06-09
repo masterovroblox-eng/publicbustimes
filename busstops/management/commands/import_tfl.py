@@ -15,6 +15,8 @@ from ...models import Service, ServiceCode
 
 
 class Command(BaseCommand):
+    """Update RouteLinks (for maps) and ServiceCodes for TfL services."""
+
     def get_stops(self, sequence: dict):
 
         for stop in sequence["stopPoint"]:

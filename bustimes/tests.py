@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime, timedelta, timezone
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from vcr import use_cassette
 
 from busstops.models import DataSource, Service
@@ -27,11 +27,16 @@ class BusTimesTest(TestCase):
         v = Vehicle.objects.create(code="LTZ1243", reg="LTZ1243")
         VehicleCode.objects.create(vehicle=v, code="TFLO:LTZ1243", scheme="BODS")
 
-        with use_cassette(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "vcr", "tfl_vehicle.yaml"
+        with (
+            override_settings(TFL={}),
+            use_cassette(
+                os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "vcr",
+                    "tfl_vehicle.yaml",
+                ),
+                decode_compressed_response=True,
             ),
-            decode_compressed_response=True,
         ):
             with self.assertNumQueries(5):
                 response = self.client.get("/vehicles/tfl/LTZ1243")

@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from vcr import use_cassette
 
 from busstops.models import DataSource, Region, Service, StopPoint
@@ -24,9 +24,12 @@ class TfLDisruptionsTest(TestCase):
     def test_siri_sx_request(self):
         vcr_dir = settings.BASE_DIR / "fixtures" / "vcr"
 
-        with use_cassette(
-            str(vcr_dir / "tfl_disruptions.yaml"), decode_compressed_response=True
-        ) as cassette:
+        with (
+            override_settings(TFL={}),
+            use_cassette(
+                str(vcr_dir / "tfl_disruptions.yaml"), decode_compressed_response=True
+            ) as cassette,
+        ):
             with self.assertNumQueries(109):
                 tfl_disruptions()
 

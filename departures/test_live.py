@@ -133,7 +133,10 @@ class LiveDeparturesTest(TestCase):
         trip = Trip.objects.create(route=route, start="0", end="1")
         StopTime.objects.create(trip=trip, stop=self.london_stop)
 
-        with vcr.use_cassette("fixtures/vcr/tfl_arrivals.yaml"):
+        with (
+            override_settings(TFL={}),
+            vcr.use_cassette("fixtures/vcr/tfl_arrivals.yaml"),
+        ):
             row = sources.TflDepartures(self.london_stop, [service]).get_departures()[0]
         self.assertEqual("Bow Church", row["destination"])
         self.assertEqual(service, row["service"])
