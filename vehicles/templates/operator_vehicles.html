@@ -64,6 +64,7 @@ ticket machines, a byproduct of the live bus tracking.</p>
     <thead>
         <tr>
             <th scope="col" colspan="2"></th>
+            {% if dates %}<th scope="col" colspan="{{ dates|length }}">{{ dates.0|date:"M" }}</th>{% endif %}
             {% if not parent %}<th scope="col" colspan="2">Last tracked</th>{% endif %}
             <th scope="col">Livery</th>
             {% if branding_column %}<th scope="col">Branding</th>{% endif %}
@@ -77,10 +78,10 @@ ticket machines, a byproduct of the live bus tracking.</p>
         </tr>
     </thead>
     <tbody>
-        {% for vehicle in vehicles %}
+        {% for vehicle in vehicles %}{% with url=vehicle.get_absolute_url %}
             <tr id="{{ vehicle.slug }}">
                 <td class="tabular"{% if not vehicle.reg %} colspan="2"{% endif %}>
-                    <a href="{{ vehicle.get_absolute_url }}">
+                    <a href="{{ url }}">
                         {% if vehicle.fleet_code or vehicle.fleet_number %}
                             {% firstof vehicle.fleet_code vehicle.fleet_number %}
                         {% elif not vehicle.reg %}
@@ -90,11 +91,18 @@ ticket machines, a byproduct of the live bus tracking.</p>
                 </td>
                 {% if vehicle.reg %}
                     <td>
-                        <a href="{{ vehicle.get_absolute_url }}" class="reg">
+                        <a href="{{ url }}" class="reg">
                             {{ vehicle.get_reg }}
                         </a>
                     </td>
                 {% endif %}
+
+                {% for date in vehicle.dates %}
+                    <td>{% if date %}
+                        <a href="{{ url }}?date={{ date.isoformat }}">{{ date|date:"j" }}</a>
+                    {% endif %}</td>
+                {% endfor %}
+
                 {% if not parent %}<td class="last-seen">
                     {{ vehicle.last_seen.service }}
                 </td>
@@ -124,7 +132,7 @@ ticket machines, a byproduct of the live bus tracking.</p>
                     <td><a href="{{ vehicle.get_edit_url }}">Edit{% if vehicle.pending_edits %}<abbr title="pending edits">*</abbr>{% endif %}</a></td>
                 {% endif %}
             </tr>
-        {% endfor %}
+        {% endwith %}{% endfor %}
     </tbody>
 </table>
 </div>

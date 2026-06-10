@@ -15,9 +15,10 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, BadRequest
 from django.core.paginator import Paginator
 from django.db import IntegrityError, OperationalError, connection, transaction
-from django.db.models import Case, F, Max, OuterRef, Q, When, Value
+from django.db.models import Case, F, Max, OuterRef, Q, When, FilteredRelation, Value
 from django.db.models.aggregates import StringAgg
 from django.db.models.functions import Coalesce, Now
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.http import Http404, HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -228,6 +229,28 @@ def operator_vehicles(request, slug=None, group_slug=None):
             default="garage__name",
         ),
     )
+
+    # calendar grid view
+    if not group and "grid" in request.GET:
+        now = timezone.localtime()
+        today = now.date()
+        month_ago = today - datetime.timedelta(days=14)
+        vehicles = vehicles.annotate(
+            recent_journeys=FilteredRelation(
+                "vehiclejourney",
+                condition=Q(vehiclejourney__date__range=(month_ago, today)),
+            ),
+            dates=ArrayAgg(
+                "recent_journeys__date",
+                distinct=True,
+                default=[],
+            ),
+        )
+        dates = [today - datetime.timedelta(days=i) for i in range(14)]
+        for v in vehicles:
+            v.dates = [date if date in v.dates else None for date in dates]
+
+        context["dates"] = dates
 
     if not vehicles:
         raise Http404
