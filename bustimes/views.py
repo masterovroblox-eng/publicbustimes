@@ -3,7 +3,6 @@ import xml.etree.ElementTree as ET
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from itertools import pairwise
 
 import requests
 import folium
@@ -37,8 +36,6 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import JsonLexer, XmlLexer
 from rest_framework.renderers import JSONRenderer
-from shapely.geometry import LineString, Point
-from shapely.ops import substring
 
 from api.serializers import TripSerializer
 from api.views import TripViewSet
@@ -51,9 +48,8 @@ from busstops.models import (
 )
 from departures import avl, gtfsr, live
 from vehicles.forms import DateForm
-from vehicles.models import Vehicle, VehicleJourney, VehicleLocation
+from vehicles.models import Vehicle, VehicleJourney
 from vehicles.rtpi import add_progress_and_delay
-from vehicles.utils import redis_client
 
 from .download_utils import download
 from .models import Route, StopTime, Trip, RouteLink
@@ -131,122 +127,6 @@ def route_link_view(request, pk):
     )
 
     return HttpResponse(m.get_root().render())
-
-
-def snap(request, trip_id=None, journey_id=None):
-    if trip_id:
-        journey = None
-        trip = get_object_or_404(
-            Trip.objects.filter(route__service__isnull=False), pk=trip_id
-        )
-    else:
-        journey = get_object_or_404(
-            VehicleJourney.objects.filter(service__isnull=False, trip__isnull=False),
-            pk=journey_id,
-        )
-        trip = journey.trip
-
-    session = requests.Session()
-    session.params.update({"api_key": settings.STADIA_MAPS_API_KEY})
-    url = "https://api.stadiamaps.com/map_match/v1"
-
-    stop_times = trip.stoptime_set.filter(stop__latlong__isnull=False).select_related(
-        "stop"
-    )
-
-    if journey:
-        locations = redis_client.lrange(journey.get_redis_key(), 0, -1)
-
-        locations = [
-            VehicleLocation.decode_appendage(location) for location in locations
-        ]
-        locations.sort(key=lambda location: location["datetime"])
-        points = [
-            {
-                "lon": location["coordinates"][0],
-                "lat": location["coordinates"][1],
-                "time": location["datetime"].timestamp(),
-            }
-            for location in locations
-        ]
-
-    # if not trip - calculate using time and first loca
-    else:
-        points = [
-            {
-                "lat": stop_time.stop.latlong.y,
-                "lon": stop_time.stop.latlong.x,
-                "time": stop_time.arrival_or_departure().total_seconds(),
-            }
-            for stop_time in stop_times
-        ]
-    response = session.post(url, json={"costing": "bus", "shape": points}).json()
-
-    route_links = []
-
-    import polyline
-
-    if "trip" in response:
-        leg = response["trip"]["legs"][0]
-        shape = LineString(
-            [(lon, lat) for lat, lon in polyline.decode(leg["shape"], precision=6)]
-        )
-
-        start_dist = None
-
-        for from_st, to_st in pairwise(stop_times):
-            from_point = Point(from_st.stop.latlong.coords)
-            to_point = Point(to_st.stop.latlong.coords)
-
-            if start_dist is None:
-                start_dist = shape.project(from_point)
-
-            # project onto remaining shape only
-            remaining = substring(shape, start_dist, shape.length)
-            if remaining.geom_type != "LineString":
-                start_dist = None
-                continue
-            end_dist_on_remaining = remaining.project(to_point)
-            end_dist = start_dist + end_dist_on_remaining
-
-            # skip if either stop is too far from the matched route (~0.1km at UK latitudes)
-            if (
-                from_point.distance(shape.interpolate(start_dist)) > 0.001
-                or to_point.distance(remaining.interpolate(end_dist_on_remaining))
-                > 0.001
-            ):
-                start_dist = None
-                continue
-
-            line_substring = substring(shape, start_dist, end_dist)
-            start_dist = end_dist
-
-            if type(line_substring) is not LineString:
-                continue
-
-            route_link = RouteLink.objects.filter(
-                service_id=trip.route.service_id,
-                from_stop=from_st.stop,
-                to_stop=to_st.stop,
-            ).first() or RouteLink(
-                service_id=trip.route.service_id,
-                from_stop=from_st.stop,
-                to_stop=to_st.stop,
-            )
-            route_link.geometry = line_substring.wkt
-            route_links.append(route_link)
-            route_link.save()
-
-    return render(
-        request,
-        "snap.html",
-        {
-            "object": trip,
-            "breadcrumb": [trip],
-            "response": response,
-            "route_links": route_links,
-        },
-    )
 
 
 def maybe_download_file(local_path, s3_key):
