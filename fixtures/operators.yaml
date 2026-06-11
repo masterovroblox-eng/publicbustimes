@@ -189,8 +189,6 @@ WEFC:
   url: https://www.westmorlandandfurness.gov.uk/parking-streets-and-transport/bus-services
 ACAH:
   name: Aircoach
-TXCO:
-  url: https://www.facebook.com/AimeesTravel
 HCCT:
   url: https://www.hants.gov.uk/transport/alternativetransport/carshares/services
 FXTX:
@@ -203,6 +201,3 @@ LCAC:
   url: https://lakelandcommercials.com/coach-and-taxi-services/
 TWET:
   url: https://21transport.co.uk/
-SABE:
-  name: S L Bell Minibuses
-  url: https://minibusesinpembrokeshire.co.uk/
