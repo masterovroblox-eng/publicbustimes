@@ -169,8 +169,8 @@ class Command(BaseCommand):
         do_route_links(feed, source, existing_routes, feed_stops, stop_codes)
 
         with transaction.atomic():
-            Trip.objects.bulk_create([trip for trip in trips.values() if not trip.id])
             existing_trips = [trip for trip in trips.values() if trip.id]
+            Trip.objects.bulk_create([trip for trip in trips.values() if not trip.id])
             Trip.objects.bulk_update(
                 existing_trips,
                 fields=[
