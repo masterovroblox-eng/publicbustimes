@@ -97,7 +97,6 @@ def get_departures(stop, services, when) -> dict:
                 if not services:
                     return {
                         "departures": live_departures,
-                        "today": timezone.localdate(),
                     }
 
     routes = Route.objects.filter(
@@ -111,6 +110,10 @@ def get_departures(stop, services, when) -> dict:
             break
     if not now:
         now = timezone.localtime()
+
+    if when and timezone.is_naive(when):
+        # treat the user-chosen date and time as stop-local
+        when = timezone.make_aware(when, now.tzinfo)
 
     departures = None
 
@@ -161,7 +164,9 @@ def get_departures(stop, services, when) -> dict:
                         if "delay" not in item or (
                             "progress" not in item and "overdue" in departure
                         ):
-                            rtpi.add_progress_and_delay(item, departure["stop_time"])
+                            rtpi.add_progress_and_delay(
+                                item, departure["stop_time"], tzinfo=now.tzinfo
+                            )
 
                         if "delay" not in item:
                             continue

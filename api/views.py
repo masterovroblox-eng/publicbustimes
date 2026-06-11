@@ -228,10 +228,16 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
 
         extra_data = {}
 
+        tzinfo = (
+            instance.trip and instance.trip.route and instance.trip.route.timezone
+        ) or None
+
         locations = []
         if redis_client:
             raw_locations = redis_client.lrange(instance.get_redis_key(), 0, -1)
-            locations = [VehicleLocation.decode_appendage(loc) for loc in raw_locations]
+            locations = [
+                VehicleLocation.decode_appendage(loc, tzinfo) for loc in raw_locations
+            ]
             locations.sort(key=lambda loc: loc["datetime"])
 
             filtered = []
@@ -290,7 +296,9 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
         ):
             extra_data["live"] = get_vehicle_locations(
                 vehicle_ids=[instance.vehicle_id],
+                trip_id=instance.trip_id,
                 stop_times=(instance.trip.stops if instance.trip else None),
+                tzinfo=tzinfo,
             )
 
         if not instance.trip and instance.vehicle.operator:
@@ -311,7 +319,7 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             extra_data["next"] = {
                 "id": next_journey.id,
-                "datetime": timezone.localtime(next_journey.datetime),
+                "datetime": timezone.localtime(next_journey.datetime, tzinfo),
             }
         try:
             previous_journey = instance.get_previous_by_datetime(**next_previous_filter)
@@ -320,7 +328,7 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             extra_data["previous"] = {
                 "id": previous_journey.id,
-                "datetime": timezone.localtime(previous_journey.datetime),
+                "datetime": timezone.localtime(previous_journey.datetime, tzinfo),
             }
 
         return Response(serializer.data | extra_data)

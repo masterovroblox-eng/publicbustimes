@@ -1,4 +1,6 @@
+{% load tz %}
 {% if when or departures %}
+{% timezone now.tzinfo|default:"Europe/London" %}
 <div class="aside" id="departures">
     <form autocomplete="off">
         <input type="date" name="date" value="{{ when.date.isoformat }}" required>
@@ -78,4 +80,5 @@
         {% endif %}
     {% endif %}
 </div>
+{% endtimezone %}
 {% endif %}

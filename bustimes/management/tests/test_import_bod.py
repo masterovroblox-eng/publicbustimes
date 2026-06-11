@@ -256,7 +256,7 @@ Lynx/Bus Open Data Service (BODS)</a>, <time datetime="2020-04-01">1 April 2020<
 
         with self.assertNumQueries(10):
             response = self.client.get("/stops/2900W0321?date=2038-01-19")
-            self.assertEqual(str(response.context["when"]), "2038-01-19 00:00:00")
+            self.assertEqual(str(response.context["when"]), "2038-01-19 00:00:00+00:00")
             self.assertEqual(
                 str(response.context["departures"][0]["time"]),
                 "2038-01-19 09:15:00+00:00",
@@ -268,14 +268,14 @@ Lynx/Bus Open Data Service (BODS)</a>, <time datetime="2020-04-01">1 April 2020<
         with self.assertNumQueries(10):
             response = self.client.get("/stops/2900W0321?date=2020-05-02")
         self.assertEqual(1, len(response.context["departures"]))
-        self.assertEqual(str(response.context["when"]), "2020-05-02 00:00:00")
+        self.assertEqual(str(response.context["when"]), "2020-05-02 00:00:00+01:00")
 
         self.assertContains(response, "Nearby stops")  # other stop in StopArea
         self.assertContains(response, "<small>54</small>")
 
         with self.assertNumQueries(9):
             response = self.client.get("/stops/2900W0321?date=2020-05-02&time=11:00")
-        self.assertEqual(str(response.context["when"]), "2020-05-02 11:00:00")
+        self.assertEqual(str(response.context["when"]), "2020-05-02 11:00:00+01:00")
         self.assertContains(response, '<a href="?date=2020-05-03"')  # next day
 
         with self.assertNumQueries(10):
@@ -296,7 +296,7 @@ Lynx/Bus Open Data Service (BODS)</a>, <time datetime="2020-04-01">1 April 2020<
 
         with self.assertNumQueries(8):
             response = self.client.get("/stations/2900A/departures?date=2020-05-02")
-        self.assertEqual(str(response.context["when"]), "2020-05-02 00:00:00")
+        self.assertEqual(str(response.context["when"]), "2020-05-02 00:00:00+01:00")
 
         # mocked.assert_called()
 

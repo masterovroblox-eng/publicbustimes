@@ -393,6 +393,7 @@ def get_vehicle_locations(
     operator_ids=None,
     trip_id=None,
     stop_times=None,
+    tzinfo=None,
 ):
     """Fetch live vehicle locations from Redis (and enrich with cached/db journey info).
 
@@ -499,6 +500,7 @@ def get_vehicle_locations(
                 add_progress_and_delay(
                     item,
                     stop_times=stop_times if matching_trip else None,
+                    tzinfo=tzinfo if matching_trip else None,
                 )
 
         if (
@@ -1078,14 +1080,18 @@ class VehicleJourneyDetailView(DetailView):
 @require_safe
 def journey_json(request, pk, vehicle_id=None, service_id=None):
     journey = get_object_or_404(
-        VehicleJourney.objects.select_related("trip", "vehicle"), pk=pk
+        VehicleJourney.objects.select_related("trip__route", "vehicle"), pk=pk
     )
+
+    tzinfo = (
+        journey.trip and journey.trip.route and journey.trip.route.timezone
+    ) or None
 
     data = {
         "vehicle_id": journey.vehicle_id,
         "service_id": journey.service_id,
         "trip_id": journey.trip_id,
-        "datetime": timezone.localtime(journey.datetime),
+        "datetime": timezone.localtime(journey.datetime, tzinfo),
         "route_name": journey.route_name,
         "code": journey.code,
         "destination": journey.destination,
@@ -1100,7 +1106,7 @@ def journey_json(request, pk, vehicle_id=None, service_id=None):
 
     if locations:
         locations = [
-            VehicleLocation.decode_appendage(location) for location in locations
+            VehicleLocation.decode_appendage(location, tzinfo) for location in locations
         ]
         locations.sort(key=lambda location: location["datetime"])
 

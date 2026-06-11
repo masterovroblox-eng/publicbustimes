@@ -15,7 +15,6 @@ from .import_gtfsr_ie import Command as GTFSRCommand
 class Command(GTFSRCommand):
     source_name = "RTCSNV"
     vehicle_code_scheme = "RTCSNV"
-    wait = 12
 
     def do_source(self):
         self.tzinfo = ZoneInfo("America/Los_Angeles")
@@ -40,12 +39,8 @@ class Command(GTFSRCommand):
 
         feed = gtfs_realtime_pb2.FeedMessage()
         feed.ParseFromString(response.content)
-        print(feed)
 
-        # the feed contains both vehicle positions and alerts (and possibly other entities)
-        for item in feed.entity:
-            if item.HasField("vehicle"):
-                yield item
+        return feed.entity
 
     def get_vehicle(self, item):
         return Vehicle.objects.get_or_create(

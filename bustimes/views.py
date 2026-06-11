@@ -280,9 +280,9 @@ def stop_time_json(stop_time, date) -> dict:
     arrival = stop_time.arrival
     departure = stop_time.departure
     if arrival is not None:
-        arrival = stop_time.arrival_datetime(date)
+        arrival = stop_time.arrival_datetime(date, route.timezone)
     if departure is not None:
-        departure = stop_time.departure_datetime(date)
+        departure = stop_time.departure_datetime(date, route.timezone)
 
     operators = []
     if trip.operator:
@@ -409,7 +409,11 @@ def stop_times_json(request, atco_code):
                 if "delay" not in item or (
                     "overdue" in time and "progress" not in item
                 ):
-                    add_progress_and_delay(item, time["stop_time"])
+                    add_progress_and_delay(
+                        item,
+                        time["stop_time"],
+                        tzinfo=time["stop_time"].trip.route.timezone,
+                    )
 
                 if "delay" not in item:
                     continue

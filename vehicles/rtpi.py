@@ -23,7 +23,7 @@ def get_route_bearing(geometry: LineString, progress: float):
 
 
 def get_stop_times(item):
-    trip = Trip.objects.select_related("calendar").get(pk=item["trip_id"])
+    trip = Trip.objects.select_related("calendar", "route").get(pk=item["trip_id"])
     trips = trip.get_trips()
 
     stop_times = (
@@ -35,9 +35,9 @@ def get_stop_times(item):
     )
 
     if len(trips) > 1:
-        return contiguous_stoptimes_only(stop_times, trip.id)
+        return trip, contiguous_stoptimes_only(stop_times, trip.id)
 
-    return stop_times
+    return trip, stop_times
 
 
 class Progress:
@@ -60,28 +60,28 @@ class Progress:
         }
 
 
-def get_delay(progress, date, when) -> int:
+def get_delay(progress, date, when, tzinfo=None) -> int:
     prev = progress.prev_stop_time
     next_ = progress.next_stop_time
 
     # when the bus is scheduled to leave prev / arrive at next
     # (arrival/departure can be None when the two would be equal)
-    prev_dep = prev.departure_datetime(date)
+    prev_dep = prev.departure_datetime(date, tzinfo)
     if prev_dep is None:
-        prev_dep = prev.arrival_datetime(date)
-    next_arr = next_.arrival_datetime(date)
+        prev_dep = prev.arrival_datetime(date, tzinfo)
+    next_arr = next_.arrival_datetime(date, tzinfo)
     if next_arr is None:
-        next_arr = next_.departure_datetime(date)
+        next_arr = next_.departure_datetime(date, tzinfo)
 
     # if the bus is at prev stop and within its scheduled dwell, it's on time
     if progress.progress <= 0.1:
-        prev_arr = prev.arrival_datetime(date)
+        prev_arr = prev.arrival_datetime(date, tzinfo)
         if prev_arr and prev_arr < prev_dep and prev_arr <= when <= prev_dep:
             return 0
 
     # likewise if the bus is at next stop and within its scheduled dwell
     elif progress.progress >= 0.9:
-        next_dep = next_.departure_datetime(date)
+        next_dep = next_.departure_datetime(date, tzinfo)
         if next_dep and next_arr < next_dep and next_arr <= when <= next_dep:
             return 0
 
@@ -89,7 +89,9 @@ def get_delay(progress, date, when) -> int:
     return int((when - expected_time).total_seconds())
 
 
-def get_progress(item: dict, stop_time=None, stop_times=None) -> Progress | None:
+def get_progress(
+    item: dict, stop_time=None, stop_times=None, tzinfo=None
+) -> Progress | None:
     when = datetime.datetime.fromisoformat(item["datetime"])
     date = datetime.date.fromisoformat(item["date"])
 
@@ -106,13 +108,16 @@ def get_progress(item: dict, stop_time=None, stop_times=None) -> Progress | None
         ]
     else:
         try:
-            stop_times = list(get_stop_times(item))
+            trip, stop_times = get_stop_times(item)
         except Trip.DoesNotExist:
             return
+        stop_times = list(stop_times)
+        if tzinfo is None and trip.route:
+            tzinfo = trip.route.timezone
 
-    start_time = stop_times[0].departure_datetime(date)
+    start_time = stop_times[0].departure_datetime(date, tzinfo)
     if start_time is None:
-        start_time = stop_times[0].arrival_datetime(date)
+        start_time = stop_times[0].arrival_datetime(date, tzinfo)
 
     route_links = {}
     if "service_id" in item:
@@ -173,7 +178,7 @@ def get_progress(item: dict, stop_time=None, stop_times=None) -> Progress | None
     progress = Progress(
         stop_times, closest[0], closest[1], closest[2].progress, closest[2].distance
     )
-    progress.delay = get_delay(progress, date, when)
+    progress.delay = get_delay(progress, date, when, tzinfo)
 
     # if closest and next_closest involve the same stop
     # (e.g. it's a circular route),
@@ -189,7 +194,7 @@ def get_progress(item: dict, stop_time=None, stop_times=None) -> Progress | None
             next_closest[2].progress,
             next_closest[2].distance,
         )
-        alt.delay = get_delay(alt, date, when)
+        alt.delay = get_delay(alt, date, when, tzinfo)
         if abs(alt.delay) < abs(progress.delay):
             progress = alt
 
@@ -199,8 +204,8 @@ def get_progress(item: dict, stop_time=None, stop_times=None) -> Progress | None
     return progress
 
 
-def add_progress_and_delay(item, stop_time=None, stop_times=None):
-    progress = get_progress(item, stop_time, stop_times)
+def add_progress_and_delay(item, stop_time=None, stop_times=None, tzinfo=None):
+    progress = get_progress(item, stop_time, stop_times, tzinfo)
     if not progress:
         return
 
