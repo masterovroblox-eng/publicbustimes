@@ -79,7 +79,7 @@ class Command(BaseCommand):
             if row.route_id in existing_services:
                 service = existing_services[row.route_id]
             else:
-                service = Service(row.route_short_name)
+                service = Service(line_name=row.route_short_name)
 
             if row.route_id in existing_routes:
                 route = existing_routes[row.route_id]
