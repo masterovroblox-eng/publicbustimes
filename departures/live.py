@@ -100,11 +100,18 @@ def get_departures(stop, services, when) -> dict:
                         "today": timezone.localdate(),
                     }
 
-    now = timezone.localtime()
-
     routes = Route.objects.filter(
         service__in=[s for s in services if not s.timetable_wrong]
     ).select_related("source")
+
+    now = None
+    for route in routes:
+        if route.timezone:
+            now = timezone.localtime(timezone=route.timezone)
+            break
+    if not now:
+        now = timezone.localtime()
+
     departures = None
 
     ntaie = any(route.source.name == "Realtime Transport Operators" for route in routes)

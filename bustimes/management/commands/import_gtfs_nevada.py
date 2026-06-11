@@ -1,0 +1,224 @@
+import logging
+
+# from functools import cache
+from pathlib import Path
+# import pandas as pd
+
+import gtfs_kit
+
+# from google.transit import gtfs_realtime_pb2
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.db.models import Min, Subquery, OuterRef
+
+from busstops.models import DataSource, Operator, Service, StopPoint, ServiceColour
+
+from ...models import Route, StopTime, Trip
+from ...gtfs_utils import get_calendars, MODES, do_route_links
+
+logger = logging.getLogger(__name__)
+
+
+class Command(BaseCommand):
+    def handle(self, *args, **options):
+        path = settings.DATA_DIR / Path("rtcsnv_gtfs.zip")
+
+        source, _ = DataSource.objects.get_or_create(name="RTCSNV")
+        source.url = "https://developer.rtcsnv.com/transitData/google_transit.zip"
+
+        # modified, last_modified = download_if_modified(path, source)
+
+        # if not modified:
+        #     return  # no new data to import
+        # source.datetime = last_modified
+
+        # logger.info(f"{source} {last_modified}")
+
+        feed = gtfs_kit.read_feed(path, dist_units="km")
+
+        operator = Operator.objects.get_or_create(noc="RTCSNV")[0]
+
+        existing_services = {
+            service.line_name: service for service in operator.service_set.all()
+        }
+        existing_routes = {route.code: route for route in source.route_set.all()}
+        routes = []
+
+        stops = StopPoint.objects.in_bulk(feed.stops.stop_id.to_list())
+        new_stops = [
+            StopPoint(
+                atco_code=f"rtcsnv-{stop.stop_id}",
+                common_name=stop.stop_name,
+                active=True,
+                source=source,
+                latlong=f"POINT({stop.stop_lon} {stop.stop_lat})",
+                timezone="America/Los_Angeles",
+            )
+            for stop in feed.stops.itertuples()
+            if stop.stop_id not in stops
+        ]
+        StopPoint.objects.bulk_create(
+            new_stops,
+            update_conflicts=True,
+            unique_fields=["atco_code"],
+            update_fields=["common_name", "latlong"],
+        )
+        for stop in new_stops:
+            stops[stop.atco_code.removeprefix("rtcsnv-")] = stop
+
+        calendars = get_calendars(feed, source)
+
+        colours = {
+            (colour.background, colour.foreground): colour
+            for colour in ServiceColour.objects.all()
+        }
+
+        for row in feed.get_routes(as_gdf=True).itertuples():
+            if row.route_id in existing_services:
+                service = existing_services[row.route_id]
+            else:
+                service = Service(row.route_short_name)
+
+            if row.route_id in existing_routes:
+                route = existing_routes[row.route_id]
+            else:
+                route = Route(code=row.route_id)
+            route.timezone = "America/Los_Angeles"
+            route.source = source
+            route.service = service
+            route.line_name = row.route_short_name
+            service.source = source
+            service.description = route.description = row.route_long_name
+            service.current = True
+
+            bg, fg = (f"#{row.route_color}", f"#{row.route_text_color}")
+            if (bg, fg) not in colours:
+                colours[(bg, fg)] = ServiceColour.objects.create(
+                    background=bg, foreground=fg
+                )
+            service.colour = colours[(bg, fg)]
+
+            service.route_type = MODES[row.route_type]
+            if row.geometry:
+                service.geometry = row.geometry.wkt
+
+            service.save()
+            service.operator.add(operator)
+            route.save()
+
+            routes.append(route)
+
+            existing_routes[route.code] = route  # deals with duplicate rows
+
+        existing_trips = {
+            trip.vehicle_journey_code: trip for trip in operator.trip_set.all()
+        }
+        trips = {}
+        for row in feed.trips.itertuples():
+            route = existing_routes[row.route_id]
+            headsign = row.trip_headsign.removeprefix(f"{route.line_name} ")
+            trip = Trip(
+                route=route,
+                calendar=calendars[row.service_id],
+                inbound=row.direction_id == 1,
+                ticket_machine_code=row.trip_id,
+                vehicle_journey_code=row.trip_id,
+                operator=operator,
+                headsign=headsign,
+            )
+            if trip.vehicle_journey_code in existing_trips:
+                # reuse existing trip id
+                trip.id = existing_trips[trip.vehicle_journey_code].id
+            trips[trip.vehicle_journey_code] = trip
+        del existing_trips
+
+        stop_times = []
+        for row in feed.stop_times.itertuples():
+            trip = trips[row.trip_id]
+
+            arrival_time = row.arrival_time
+            departure_time = row.departure_time
+
+            if arrival_time[0] == " ":
+                arrival_time = "0" + arrival_time[1:]
+            if departure_time[0] == " ":
+                departure_time = "0" + departure_time[1:]
+
+            if not trip.start:
+                trip.start = departure_time
+            trip.end = arrival_time
+
+            stop_time = StopTime(
+                arrival=arrival_time,
+                departure=departure_time,
+                sequence=row.stop_sequence,
+                trip=trip,
+                timing_status="PTP" if row.timepoint else "OTH",
+                pick_up=(row.pickup_type != 1),
+                set_down=(row.drop_off_type != 1),
+            )
+
+            stop_time.stop = trip.destination = stops[row.stop_id]
+
+            stop_times.append(stop_time)
+
+        feed_stops = {row.stop_id: row for row in feed.stops.itertuples()}
+        stop_codes = {stop_id: stop.atco_code for stop_id, stop in stops.items()}
+        do_route_links(feed, source, existing_routes, feed_stops, stop_codes)
+
+        for trip in trips.values():
+            if trip.start is not None and trip.end is not None:
+                pass
+            else:
+                print(trip.ticket_machine_code)
+
+        with transaction.atomic():
+            Trip.objects.bulk_create([trip for trip in trips.values() if not trip.id])
+            existing_trips = [trip for trip in trips.values() if trip.id]
+            Trip.objects.bulk_update(
+                existing_trips,
+                fields=[
+                    "route",
+                    "calendar",
+                    "start",
+                    "end",
+                    "destination",
+                    "block",
+                    "vehicle_journey_code",
+                    "ticket_machine_code",
+                    "inbound",
+                    "headsign",
+                ],
+            )
+
+            StopTime.objects.filter(trip__in=existing_trips).delete()
+            StopTime.objects.bulk_create(stop_times)
+
+            for service in source.service_set.filter(current=True):
+                service.do_stop_usages()
+                service.update_search_vector()
+
+            logger.info(
+                source.route_set.exclude(id__in=[route.id for route in routes]).delete()
+            )
+            logger.info(
+                operator.trip_set.exclude(
+                    id__in=[trip.id for trip in trips.values()]
+                ).delete()
+            )
+            logger.info(
+                operator.service_set.filter(current=True, route__isnull=True).update(
+                    current=False
+                )
+            )
+
+            source.route_set.update(
+                start_date=Subquery(
+                    Route.objects.filter(pk=OuterRef("pk"))
+                    .annotate(min_date=Min("trip__calendar__start_date"))
+                    .values("min_date")[:1]
+                )
+            )
+
+            source.save(update_fields=["url", "datetime"])

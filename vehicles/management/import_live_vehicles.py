@@ -64,6 +64,7 @@ class ImportLiveVehiclesCommand(BaseCommand):
     history = True
     status = []
     status_key = None
+    tzinfo = None
 
     @staticmethod
     def add_arguments(parser):
@@ -354,7 +355,7 @@ class ImportLiveVehiclesCommand(BaseCommand):
             except Trip.DoesNotExist:
                 location.journey.trip = None
 
-            redis_json = location.get_redis_json()
+            redis_json = location.get_redis_json(tz=self.tzinfo)
             redis_json = json.dumps(redis_json, cls=DjangoJSONEncoder)
             pipeline.set(f"vehicle{vehicle.id}", redis_json, ex=900)
             # can't use 'mset' cos it doesn't let us specify an expiry (900 secs = 15 min)

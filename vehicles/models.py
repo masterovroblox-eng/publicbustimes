@@ -780,7 +780,7 @@ class VehicleLocation:
         )
 
     @staticmethod
-    def decode_appendage(location):
+    def decode_appendage(location, tz=None):
         location = struct.unpack("I 2f ?h ?h", location)
         return {
             "id": location[0],
@@ -788,11 +788,12 @@ class VehicleLocation:
             "delta": (location[5] or None) and location[6],
             "direction": (location[3] or None) and location[4],
             "datetime": timezone.localtime(
-                datetime.datetime.fromtimestamp(location[0], datetime.timezone.utc)
+                datetime.datetime.fromtimestamp(location[0], datetime.timezone.utc),
+                timezone=tz,
             ),
         }
 
-    def get_redis_json(self):
+    def get_redis_json(self, tz=None):
         journey = self.journey
 
         json = {
@@ -800,7 +801,7 @@ class VehicleLocation:
             "journey_id": journey.id,
             "coordinates": self.latlong.coords,
             "heading": self.heading,
-            "datetime": timezone.localtime(self.datetime),
+            "datetime": timezone.localtime(self.datetime, timezone=tz),
             "destination": journey.destination,
             "block": self.block,
         }
