@@ -1,12 +1,9 @@
 import logging
 
-# from functools import cache
 from pathlib import Path
-# import pandas as pd
 
 import gtfs_kit
 
-# from google.transit import gtfs_realtime_pb2
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -14,6 +11,7 @@ from django.db.models import Min, Subquery, OuterRef
 
 from busstops.models import DataSource, Operator, Service, StopPoint, ServiceColour
 
+from ...download_utils import download_if_modified
 from ...models import Route, StopTime, Trip
 from ...gtfs_utils import get_calendars, MODES, do_route_links
 
@@ -27,13 +25,13 @@ class Command(BaseCommand):
         source, _ = DataSource.objects.get_or_create(name="RTCSNV")
         source.url = "https://developer.rtcsnv.com/transitData/google_transit.zip"
 
-        # modified, last_modified = download_if_modified(path, source)
+        modified, last_modified = download_if_modified(path, source)
 
         # if not modified:
         #     return  # no new data to import
-        # source.datetime = last_modified
+        source.datetime = last_modified
 
-        # logger.info(f"{source} {last_modified}")
+        logger.info(f"{source} {last_modified}")
 
         feed = gtfs_kit.read_feed(path, dist_units="km")
 
@@ -45,7 +43,8 @@ class Command(BaseCommand):
         existing_routes = {route.code: route for route in source.route_set.all()}
         routes = []
 
-        stops = StopPoint.objects.in_bulk(feed.stops.stop_id.to_list())
+        # upsert stops
+        stops = {}
         new_stops = [
             StopPoint(
                 atco_code=f"rtcsnv-{stop.stop_id}",
@@ -54,15 +53,17 @@ class Command(BaseCommand):
                 source=source,
                 latlong=f"POINT({stop.stop_lon} {stop.stop_lat})",
                 timezone="America/Los_Angeles",
+                bearing=stop.stop_name[0]
+                if stop.stop_name[:2].upper() in ("NB", "EB", "SB", "WB")
+                else "",
             )
             for stop in feed.stops.itertuples()
-            if stop.stop_id not in stops
         ]
         StopPoint.objects.bulk_create(
             new_stops,
             update_conflicts=True,
             unique_fields=["atco_code"],
-            update_fields=["common_name", "latlong"],
+            update_fields=["common_name", "latlong", "bearing"],
         )
         for stop in new_stops:
             stops[stop.atco_code.removeprefix("rtcsnv-")] = stop
@@ -166,12 +167,6 @@ class Command(BaseCommand):
         feed_stops = {row.stop_id: row for row in feed.stops.itertuples()}
         stop_codes = {stop_id: stop.atco_code for stop_id, stop in stops.items()}
         do_route_links(feed, source, existing_routes, feed_stops, stop_codes)
-
-        for trip in trips.values():
-            if trip.start is not None and trip.end is not None:
-                pass
-            else:
-                print(trip.ticket_machine_code)
 
         with transaction.atomic():
             Trip.objects.bulk_create([trip for trip in trips.values() if not trip.id])
