@@ -32,10 +32,15 @@ class Command(GTFSRCommand):
         return self
 
     def get_items(self):
+        headers = {}
+        if self.headers:
+            headers["if-modified-since"] = self.headers["last-modified"]
+            headers["if-none-match"] = self.headers["etag"]
+
         response = self.session.get(self.url, timeout=10)
         response.raise_for_status()
 
-        print(response.headers)
+        self.headers = response.headers
 
         feed = gtfs_realtime_pb2.FeedMessage()
         feed.ParseFromString(response.content)
@@ -44,9 +49,9 @@ class Command(GTFSRCommand):
 
     def get_vehicle(self, item):
         return Vehicle.objects.get_or_create(
+            {"fleet_code": item.vehicle.vehicle.id.strip()},
             operator_id="RTCSNV",
-            code=item.vehicle.vehicle.id,
-            fleet_code=item.vehicle.vehicle.id,
+            code=item.vehicle.vehicle.id.strip(),
         )
 
     def get_journey(self, item, vehicle):
