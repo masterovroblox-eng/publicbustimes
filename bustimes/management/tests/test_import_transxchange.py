@@ -853,8 +853,20 @@ class ImportTransXChangeTest(TestCase):
 
         call_command("import_transxchange", FIXTURES_DIR / "22A 22B 22C 08032021.xml")
 
+        trip_1935_id = Trip.objects.get(ticket_machine_code="1935").id
+
+        # reset file_hash so journeys are re-imported, not skipped
+        Route.objects.update(file_hash="")
+        # delete a 22C trip so the trip count changes and ids can't be reused
+        Trip.objects.get(ticket_machine_code="1530").delete()
+
         # re-import to test handling of already-existing ServiceCode
         call_command("import_transxchange", FIXTURES_DIR / "22A 22B 22C 08032021.xml")
+
+        # 22A trip ids reused
+        self.assertEqual(Trip.objects.get(ticket_machine_code="1935").id, trip_1935_id)
+        # 22C's remaining old trip was detached, and its trips recreated
+        self.assertEqual(Trip.objects.filter(route=None).count(), 1)
 
         self.assertEqual(str(Trip.objects.get(ticket_machine_code="1935")), "19:35")
 
@@ -1240,8 +1252,12 @@ class ImportTransXChangeTest(TestCase):
             # ensure that file is re-imported
             Route.objects.filter(line_name="M12").update(file_hash=None)
 
-            # change departure time, so trip id should not be reused
-            Trip.objects.filter(route__line_name="M12").update(start="00:00")
+            # change one departure time (the last, so that some earlier trips
+            # match before the mismatch is found) - trip ids should not be reused
+            last_trip = (
+                Trip.objects.filter(route__line_name="M12").order_by("start").last()
+            )
+            Trip.objects.filter(id=last_trip.id).update(start="27:00:00")
 
             # test re-importing a previously imported service again
             with self.assertLogs(

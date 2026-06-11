@@ -1054,6 +1054,9 @@ class Command(BaseCommand):
                         logger.info(f"{route.code} {old_trip.start} {trip.start}")
                         existing_trips.update(route=None)
                         existing_trips = None
+                        for t in trips:
+                            # may have been set before the mismatch was found
+                            t.id = None
                         break
             else:
                 existing_trips.update(route=None)
