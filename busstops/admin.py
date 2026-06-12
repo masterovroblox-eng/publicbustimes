@@ -125,7 +125,6 @@ class OperatorAdmin(admin.ModelAdmin):
         "region_id",
         "services",
         "vehicles",
-        "twitter",
     ]
     list_filter = (
         "modified_at",
@@ -136,11 +135,19 @@ class OperatorAdmin(admin.ModelAdmin):
         "group",
     )
     search_fields = ("noc", "name")
-    raw_id_fields = ("region", "regions", "siblings", "colour")
+    raw_id_fields = ("region", "regions", "siblings", "colour", "source")
     inlines = [OperatorCodeInline]
     readonly_fields = ["search_vector", "modified_at"]
     prepopulated_fields = {"slug": ("name",)}
-    autocomplete_fields = ("licences",)
+    autocomplete_fields = ("licences", "payment_methods")
+
+    def get_exclude(self, request, obj=None):
+        if obj:
+            return [
+                field
+                for field in ("twitter", "address", "email", "phone", "qualifier_name")
+                if not getattr(obj, field)
+            ]
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -615,6 +622,7 @@ class PaymentMethodServiceInline(admin.TabularInline):
 class PaymentMethodAdmin(admin.ModelAdmin):
     list_display = ("name", "url", "operators")
     inlines = [PaymentMethodOperatorInline, PaymentMethodServiceInline]
+    search_fields = ["name"]
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
