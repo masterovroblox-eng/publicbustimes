@@ -445,13 +445,25 @@ function JourneySidebar(props: {
         ) : null}
       </>
     );
-  } else if (journey.operator) {
+  } else if (journey.operator && journey.route_name) {
     service = (
       <li>
         <a
           href={`/services/${journey.operator.noc}:${journey.route_name}/vehicles?date=${journey.date}#journey-${journey.id}`}
         >
           {journey.route_name}
+        </a>
+      </li>
+    );
+  } else if (journey.vehicle) {
+    service = (
+      <li>
+        <a
+          href={`/vehicles/${journey.vehicle.slug}?date=${journey.date}#journey-${journey.id}`}
+        >
+          {journey.vehicle.fleet_code && journey.vehicle.reg
+            ? `${journey.vehicle.fleet_code} - ${journey.vehicle.reg}`
+            : journey.vehicle.reg || journey.vehicle.fleet_code}
         </a>
       </li>
     );
@@ -491,7 +503,9 @@ function JourneySidebar(props: {
           ) : null}
         </div>
       ) : null}
-      {journey.trip ? null : <p>To {journey.destination}</p>}
+      {!journey.trip && journey.destination ? (
+        <p>To {journey.destination}</p>
+      ) : null}
       {journey.trip?.times ? (
         <TripTimetable
           trip={{ times: journey.trip.times }}
@@ -500,33 +514,35 @@ function JourneySidebar(props: {
           onMouseEnter={props.onMouseEnter}
         />
       ) : null}
-      {journey.vehicle || journey.trip?.block ? (
-        <dl className="contact-details">
-          {journey.vehicle ? (
-            <div>
-              <dt>Vehicle</dt>
-              <dd>
-                <a
-                  href={`/vehicles/${journey.vehicle.slug}?date=${journey.date}#journey-${journey.id}`}
-                >
-                  {journey.vehicle.fleet_code}{" "}
-                  <span className="reg">{journey.vehicle.reg}</span>
-                </a>
-              </dd>
-            </div>
-          ) : null}
-          {journey.trip?.block ? (
-            <div>
-              <dt>Block</dt>
-              <dd>
-                <a href={`/trips/${journey.trip.id}/block`}>
-                  {journey.trip.block}
-                </a>
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      ) : null}
+      <dl className="contact-details">
+        {journey.vehicle ? (
+          <div>
+            <dt>Vehicle</dt>
+            <dd>
+              <a
+                href={`/vehicles/${journey.vehicle.slug}?date=${journey.date}#journey-${journey.id}`}
+              >
+                {journey.vehicle.fleet_code}{" "}
+                <span className="reg">{journey.vehicle.reg}</span>
+              </a>
+            </dd>
+          </div>
+        ) : null}
+        {journey.trip?.block ? (
+          <div>
+            <dt>Block</dt>
+            <dd>
+              <a href={`/trips/${journey.trip.id}/block?date=${journey.date}`}>
+                {journey.trip.block}
+              </a>
+            </dd>
+          </div>
+        ) : null}
+        <div>
+          <dt>Date</dt>
+          <dd>{journey.date}</dd>
+        </div>
+      </dl>
     </div>
   );
 }
