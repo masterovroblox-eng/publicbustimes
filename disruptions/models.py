@@ -1,3 +1,6 @@
+from datetime import timedelta
+from itertools import pairwise
+
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 from django.urls import reverse
@@ -85,14 +88,24 @@ class Situation(models.Model):
         current_timezone = timezone.get_current_timezone()
         validity_periods.sort(key=lambda p: p.period)
         periods = [
-            (
+            [
                 period.period.lower
                 and period.period.lower.astimezone(current_timezone),
                 period.period.upper
                 and period.period.upper.astimezone(current_timezone),
-            )
+            ]
             for period in validity_periods
         ]
+
+        # merge contiguous periods
+        # (e.g. one ends at 23:59 and the next starts at 00:00, 1 minute later)
+        merged = periods[:1]
+        for prev, curr in pairwise(periods):
+            if prev[1] and curr[0] and curr[0] - prev[1] == timedelta(minutes=1):
+                merged[-1][1] = curr[1]
+            else:
+                merged.append(curr)
+        periods = merged
 
         if len(periods) == 1:
             lower, upper = periods[0]
@@ -101,38 +114,37 @@ class Situation(models.Model):
                     return [
                         f"""{time_range(lower, upper)}, {date_range(lower=lower, upper=upper)}"""
                     ]
-                return [date_range(validity_periods[0].period)]
+                return [date_range(lower=lower, upper=upper)]
 
         now = timezone.now()
         if current_periods := [
-            (upper, lower)
-            for (upper, lower) in periods
+            (lower, upper)
+            for (lower, upper) in periods
             if upper is None or upper >= now
         ]:
             # filter out past periods for brevity
             periods = current_periods
 
         # Group consecutive periods with matching start/end times into runs
-        runs = [[0]]
-        for i in range(1, len(periods)):
-            prev, curr = periods[i - 1], periods[i]
+        runs = [[periods[0]]]
+        for prev, curr in pairwise(periods):
             if (
                 prev[0]
                 and curr[0]
                 and prev[1]
                 and curr[1]
-                and curr[0].date() - prev[0].date() == timezone.timedelta(days=1)
+                and curr[0].date() - prev[0].date() == timedelta(days=1)
                 and curr[0].time() == prev[0].time()
                 and curr[1].time() == prev[1].time()
             ):
-                runs[-1].append(i)
+                runs[-1].append(curr)
             else:
-                runs.append([i])
+                runs.append([curr])
 
         result = []
         for run in runs:
-            first = periods[run[0]]
-            last = periods[run[-1]]
+            first = run[0]
+            last = run[-1]
             if first[0] and first[1] and last[1]:
                 result.append(
                     f"""{time_range(*first)}, {date_range(lower=first[0], upper=last[1])}"""
