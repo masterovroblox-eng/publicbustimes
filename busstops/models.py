@@ -595,6 +595,8 @@ class Operator(SearchMixin, models.Model):
     phone = models.CharField(max_length=128, blank=True)
     twitter = models.CharField(max_length=255, blank=True)
 
+    timezone = TimeZoneField(null=True, blank=True)
+
     licences = models.ManyToManyField("vosa.Licence", blank=True)
     payment_methods = models.ManyToManyField("PaymentMethod", blank=True)
     search_vector = SearchVectorField(null=True, blank=True)
