@@ -30,7 +30,11 @@ def format_reg(reg):
         if reg[:3].isalpha():
             return reg[:3] + " " + reg[3:]
         if reg[-2:].isalpha():
+            if reg[:2].isalpha():  # North Macedonia
+                return reg[:2] + " " + reg[2:-2] + " " + reg[-2:]
+
             return reg[:-2] + " " + reg[-2:]
+
         if reg[:2].isalpha():
             return reg[:2] + " " + reg[2:]
 
