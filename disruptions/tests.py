@@ -71,6 +71,36 @@ class DisruptionsTest(TestCase):
             ],
         )
 
+    def test_validity_periods_contiguous(self):
+        # one continuous period split into daily chunks,
+        # each ending at 23:59 with the next starting 1 minute later at 00:00
+        ValidityPeriod.objects.bulk_create(
+            [
+                ValidityPeriod(
+                    situation=self.situation,
+                    period=DateTimeTZRange(
+                        "2021-05-09T23:00:00Z", "2021-05-10T22:59:00Z", "[]"
+                    ),
+                ),
+                ValidityPeriod(
+                    situation=self.situation,
+                    period=DateTimeTZRange(
+                        "2021-05-10T23:00:00Z", "2021-05-11T22:59:00Z", "[]"
+                    ),
+                ),
+                ValidityPeriod(
+                    situation=self.situation,
+                    period=DateTimeTZRange(
+                        "2021-05-11T23:00:00Z", "2021-05-12T22:59:00Z", "[]"
+                    ),
+                ),
+            ]
+        )
+        self.assertEqual(
+            self.situation.list_validity_periods(),
+            ["Monday 10 – Wednesday 12 May 2021"],
+        )
+
     def test_validity_periods_one_night(self):
         self.assertEqual(self.situation.list_validity_periods(), [])
         ValidityPeriod.objects.bulk_create(
