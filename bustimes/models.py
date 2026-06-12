@@ -392,11 +392,11 @@ class Trip(models.Model):
     def __str__(self):
         return format_timedelta(self.start, plus_one=True) or ""
 
-    def start_datetime(self, date):
-        return time_datetime(self.start, date)
+    def start_datetime(self, date, tzinfo=None):
+        return time_datetime(self.start, date, tzinfo)
 
-    def end_datetime(self, date):
-        return time_datetime(self.end, date)
+    def end_datetime(self, date, tzinfo=None):
+        return time_datetime(self.end, date, tzinfo)
 
     class Meta:
         indexes = [
@@ -542,16 +542,16 @@ class StopTime(models.Model):
     def arrival_time(self):
         return format_timedelta(self.arrival)
 
-    def arrival_datetime(self, date):
+    def arrival_datetime(self, date, tzinfo=None):
         if self.arrival is not None:
-            return time_datetime(self.arrival, date)
+            return time_datetime(self.arrival, date, tzinfo)
 
     def departure_time(self):
         return format_timedelta(self.departure)
 
-    def departure_datetime(self, date):
+    def departure_datetime(self, date, tzinfo=None):
         if self.departure is not None:
-            return time_datetime(self.departure, date)
+            return time_datetime(self.departure, date, tzinfo)
 
     def is_minor(self):
         return self.timing_status and self.timing_status != "PTP"

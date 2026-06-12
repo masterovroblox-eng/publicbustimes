@@ -17,7 +17,7 @@ def format_timedelta(duration, plus_one=False):
         return duration
 
 
-def time_datetime(time, date):
+def time_datetime(time, date, tzinfo=None):
     seconds = time.total_seconds()
     while seconds >= 86400:
         date += datetime.timedelta(1)
@@ -26,4 +26,4 @@ def time_datetime(time, date):
         int(seconds / 3600), int(seconds % 3600 / 60), int(seconds % 60)
     )
     combined = datetime.datetime.combine(date, time)
-    return make_aware(combined)
+    return make_aware(combined, tzinfo)

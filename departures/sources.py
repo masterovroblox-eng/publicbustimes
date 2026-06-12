@@ -176,17 +176,18 @@ class TimetableDepartures(Departures):
 
     def get_row(self, stop_time):
         trip = stop_time.trip
+        tzinfo = self.now.tzinfo if self.now else None
 
         if stop_time.arrival is not None:
-            arrival = stop_time.arrival_datetime(stop_time.date)
+            arrival = stop_time.arrival_datetime(stop_time.date, tzinfo)
         else:
             arrival = None
 
-        departure = stop_time.departure_datetime(stop_time.date)
+        departure = stop_time.departure_datetime(stop_time.date, tzinfo)
         time = departure
 
         return {
-            "origin_departure_time": trip.start_datetime(stop_time.date),
+            "origin_departure_time": trip.start_datetime(stop_time.date, tzinfo),
             "time": time,
             "date": stop_time.date,
             "arrival": arrival,
