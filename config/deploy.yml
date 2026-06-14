@@ -13,12 +13,11 @@ image: jclgoodwin/bustimes-org
 servers:
   web:
     hosts:
-      - 10.131.240.107
-      - 10.131.240.101
-      - 10.131.240.105
+      - 10.131.240.97
+      - 10.131.240.98
     env:
       clear:
-        WEB_CONCURRENCY: 8
+        WEB_CONCURRENCY: 16
         EMAIL_HOST: email-smtp.eu-west-1.amazonaws.com
         ALLOWED_HOSTS: bustimes.org
       secret:

@@ -38,6 +38,9 @@ class Command(BaseCommand):
             for notify in gen:
                 print(notify)
 
+                if notify.payload.startswith("rtcsnv-"):
+                    continue
+
                 response = session.post(
                     settings.NEW_VEHICLE_WEBHOOK_URL,
                     json={

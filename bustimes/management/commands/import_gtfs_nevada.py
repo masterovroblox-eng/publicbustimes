@@ -27,8 +27,8 @@ class Command(BaseCommand):
 
         modified, last_modified = download_if_modified(path, source)
 
-        # if not modified:
-        #     return  # no new data to import
+        if not modified:
+            return  # no new data to import
         source.datetime = last_modified
 
         logger.info(f"{source} {last_modified}")
