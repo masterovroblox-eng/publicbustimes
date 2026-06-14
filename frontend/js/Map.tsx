@@ -261,13 +261,13 @@ export default function BusTimesMap(
           // onError={(e) => captureException(e)}
           onContextMenu={onContextMenu}
         >
+          <AttributionControl compact={false} position="top-right" />
           <NavigationControl showCompass={false} />
           <GeolocateControl trackUserLocation />
           <StyleSwitcherControl
             style={mapStyle}
             onChange={handleMapStyleChange}
           />
-          <AttributionControl compact={false} />
           <MapChild onInit={props.onMapInit} />
 
           {props.children}
