@@ -114,6 +114,11 @@
 {% endif %}
 
 {% if journeys %}
+
+    {% load tz %}
+
+    {% timezone object.operator.timezone|default:"Europe/London" %}
+
     <div class="table-wrapper">
     <table>
     <thead>
@@ -176,6 +181,7 @@
         </tr>
     {% endfor %}
     </tbody></table></div>
+    {% endtimezone %}
 {% endif %}
 
 {% if garage %}

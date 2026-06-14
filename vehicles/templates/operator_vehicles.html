@@ -60,6 +60,9 @@ ticket machines, a byproduct of the live bus tracking.</p>
     </ul>
 {% endif %}
 
+{% load tz %}
+
+{% timezone object.timezone|default:"Europe/London" %}
 <div class="table-wrapper">
 <table class="fleet compact">
     <thead>
@@ -137,6 +140,7 @@ ticket machines, a byproduct of the live bus tracking.</p>
     </tbody>
 </table>
 </div>
+{% endtimezone %}
 
 {% include 'pagination.html' with page=vehicles %}
 
