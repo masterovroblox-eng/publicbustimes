@@ -207,13 +207,16 @@ def operator_vehicles(request, slug=None, group_slug=None):
 
     vehicles = vehicles.order_by("fleet_number", "fleet_code", "reg", "code")
 
+    grid: bool = not group and "grid" in request.GET
+
     if group_slug:
         context = {"object": group}
     else:
-        vehicles = vehicles.annotate(feature_names=features_string_agg)
-        vehicles = vehicles.annotate(
-            pending_edits=Exists("vehiclerevision", filter=Q(pending=True))
-        )
+        if not grid:
+            vehicles = vehicles.annotate(feature_names=features_string_agg)
+            vehicles = vehicles.annotate(
+                pending_edits=Exists("vehiclerevision", filter=Q(pending=True))
+            )
         vehicles = vehicles.select_related("latest_journey")
 
         context = {
@@ -231,7 +234,7 @@ def operator_vehicles(request, slug=None, group_slug=None):
     )
 
     # calendar grid view
-    if not group and "grid" in request.GET:
+    if not group and grid:
         now = timezone.localtime()
         today = now.date()
         month_ago = today - datetime.timedelta(days=14)
@@ -272,7 +275,10 @@ def operator_vehicles(request, slug=None, group_slug=None):
     else:
         paginator = None
 
-        context["features_column"] = any(vehicle.feature_names for vehicle in vehicles)
+        if not grid:
+            context["features_column"] = any(
+                vehicle.feature_names for vehicle in vehicles
+            )
 
     columns = set(key for vehicle in vehicles if vehicle.data for key in vehicle.data)
     for vehicle in vehicles:
