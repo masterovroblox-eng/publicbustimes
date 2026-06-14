@@ -75,6 +75,7 @@ class ImportTransXChangeTest(TestCase):
                 OperatorCode(operator=cls.fabd, source=cls.nocs, code="FABD"),
                 OperatorCode(operator=cls.fabd, source=cls.nocs, code="SDVN"),
                 OperatorCode(operator=cls.fabd, source=cls.nocs, code="CBNL"),
+                OperatorCode(operator=cls.fabd, source=cls.nocs, code="CBBH"),
                 OperatorCode(operator=cls.fabd, source=london, code="LC"),
                 OperatorCode(operator=cls.fabd, source=london, code="BE"),
             ]
@@ -1676,11 +1677,12 @@ class ImportTransXChangeTest(TestCase):
     def test_frequency(self):
         with self.assertLogs(level="WARNING") as cm:
             # import a document with a Frequency structure (journey repeats every 10 minutes)
+            # (also with a Ticketer possibly-dodgy revision number)
             self.handle_files(
                 "FECS.zip",
                 [
                     "BNSM_59.xml",
-                    "CBBH_10LU.xml",
+                    "CBBH_10LU_CBBHPF00022806110_20240108_-_f7c2d694-e847-449a-b1c1-34f9a76c3a4d.xml",
                     "CBNL_22.xml",
                 ],
             )
@@ -1699,9 +1701,15 @@ class ImportTransXChangeTest(TestCase):
         route = Route.objects.get(line_name="22")
         self.assertEqual(route.trip_set.count(), 97)
 
+        # cos unexpected filename format
+        self.assertEqual(route.revision_number_context, "")
+
         # all journeys specified in file
         route = Route.objects.get(line_name="10")
         self.assertEqual(route.trip_set.count(), 125)
+
+        # has a revision_number_context cos Ticketer, and the operator exists
+        self.assertEqual(route.revision_number_context, "10LU")
 
     @time_machine.travel("2024-01-01")
     def test_multiple_wait_times(self):
