@@ -22,7 +22,25 @@
 {% block fuse %}
 {% if ad %}
 <script src="{{ static('consent.js') }}"></script>
-<script>if(window.top===window.self&&window.location.host==="bustimes.org"&&typeof Array.prototype.includes!=="undefined"){s=document.getElementsByTagName('script')[0];var sc=document.createElement('script');sc.async=true;sc.src='https://cdn.adfirst.media/hb/bustimes.js?v'+Math.floor(new Date().getTime()/600000);s.parentNode.insertBefore(sc,s);}</script>
+<script>if(window.top===window.self&&typeof Array.prototype.includes!=="undefined"&&window.__tcfapi){
+    window.__tcfapi("addEventListener",2,function(tcData,success){
+        if(!success)return;
+        if(tcData.eventStatus!=="tcloaded"&&tcData.eventStatus!=="useractioncomplete")return;
+        window.__tcfapi("removeEventListener",2,function(){},tcData.listenerId);
+        var consents=tcData.purpose&&tcData.purpose.consents,ok=!tcData.gdprApplies;
+        if(!ok&&consents){
+            ok=true;
+            for(var i=1;i<=11;i++){if(!consents[i]){ok=false;break;}}
+        }
+        if(ok){
+            var s=document.getElementsByTagName("script")[0];
+            var sc=document.createElement("script");
+            sc.async=true;
+            sc.src="https://cdn.adfirst.media/hb/bustimes.js?v"+Math.floor(new Date().getTime()/600000);
+            s.parentNode.insertBefore(sc,s);
+        }
+    });
+}</script>
 {% endif %}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-X2Z0KM7Z5C"></script>
 <script>
