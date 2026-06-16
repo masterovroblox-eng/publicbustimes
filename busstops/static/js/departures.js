@@ -41,11 +41,19 @@
         fetch(basePath + '/departures' + newSearch).then(function(response) {
             if (response.ok) {
                 response.text().then(function(text) {
-                    departures.outerHTML = text;
+                    function update() {
+                        departures.outerHTML = text;
 
-                    search = newSearch;
+                        search = newSearch;
 
-                    setUp();
+                        setUp();
+                    }
+
+                    if (document.startViewTransition) {
+                        document.startViewTransition(update);
+                    } else {
+                        update();
+                    }
 
                     if (window.location.search !== newSearch) {
                         if (newSearch) {
