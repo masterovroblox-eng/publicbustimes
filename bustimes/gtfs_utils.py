@@ -18,21 +18,24 @@ MODES = {
 
 
 def get_calendars(feed, source) -> dict:
-    calendars = {
-        row.service_id: Calendar(
-            mon=row.monday,
-            tue=row.tuesday,
-            wed=row.wednesday,
-            thu=row.thursday,
-            fri=row.friday,
-            sat=row.saturday,
-            sun=row.sunday,
-            start_date=row.start_date,
-            end_date=row.end_date,
-            source=source,
-        )
-        for row in feed.calendar.itertuples()
-    }
+    if feed.calendar is not None:
+        calendars = {
+            row.service_id: Calendar(
+                mon=row.monday,
+                tue=row.tuesday,
+                wed=row.wednesday,
+                thu=row.thursday,
+                fri=row.friday,
+                sat=row.saturday,
+                sun=row.sunday,
+                start_date=row.start_date,
+                end_date=row.end_date,
+                source=source,
+            )
+            for row in feed.calendar.itertuples()
+        }
+    else:
+        calendars = {}
 
     calendar_dates = []
 

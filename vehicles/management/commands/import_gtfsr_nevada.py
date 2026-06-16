@@ -27,8 +27,8 @@ class Command(GTFSRCommand):
     def get_items(self):
         headers = {}
         if self.headers:
-            headers["if-modified-since"] = self.headers["last-modified"]
-            headers["if-none-match"] = self.headers["etag"]
+            headers["if-modified-since"] = self.headers.get("last-modified")
+            headers["if-none-match"] = self.headers.get("etag")
 
         response = self.session.get(self.url, timeout=10)
         response.raise_for_status()
