@@ -1668,10 +1668,10 @@ class ImportTransXChangeTest(TestCase):
         response = self.client.get(v.get_absolute_url())
         self.assertEqual(5, len(response.context_data["predictions"]))
 
-        response = self.client.get(f"/journeys/{vj_1.id}.json").json()
+        response = self.client.get(f"/api/vehiclejourneys/{vj_1.id}/details/").json()
 
         self.assertEqual(vj_2.id, response["next"]["id"])
-        self.assertEqual(20, len(response["stops"]))
+        self.assertEqual(20, len(response["trip"]["times"]))
 
     @time_machine.travel("2024-01-01")
     def test_frequency(self):

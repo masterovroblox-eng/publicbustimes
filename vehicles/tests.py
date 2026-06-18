@@ -268,28 +268,31 @@ class VehiclesTests(TestCase):
             self.assertNumQueries(4),
         ):
             response = self.client.get(
-                f"/vehicles/{self.vehicle_1.id}/journeys/{self.journey.id}.json"
+                f"/api/vehiclejourneys/{self.journey.id}/details/"
             )
         self.assertEqual(
             {
-                "code": "",
-                "current": True,
+                "id": self.journey.id,
                 "datetime": "2020-10-20T00:47:00+01:00",
-                "destination": "",
-                "direction": "",
-                "next": {
-                    "datetime": "2020-10-20T13:00:00+01:00",
-                    "id": self.journey.id + 2,
+                "date": "2020-10-20",
+                "vehicle": {
+                    "id": self.journey.vehicle_id,
+                    "slug": "lynx-2",
+                    "fleet_code": "1",
+                    "reg": "FD54JYA",
                 },
-                # "previous": {
-                #     "datetime": "2020-10-16T13:00:00+01:00",
-                #     "id": self.journey.id + 1,
-                # },
                 "route_name": "2",
-                "service_id": self.journey.service_id,
+                "destination": "",
                 "trip_id": None,
-                "vehicle_id": self.journey.vehicle_id,
-                "stops": [],
+                "service": {
+                    "id": self.journey.service_id,
+                    "slug": "spixworth-hunworth-happisburgh",
+                },
+                "operator": {"noc": "LYNX", "slug": "lynx", "name": "Lynx"},
+                "next": {
+                    "id": self.journey.id + 2,
+                    "datetime": "2020-10-20T13:00:00+01:00",
+                },
             },
             response.json(),
         )

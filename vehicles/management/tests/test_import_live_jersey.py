@@ -60,20 +60,27 @@ class JerseyImportTest(TestCase):
         ):
             call_command("import_live_jersey")
 
-        with patch("vehicles.views.redis_client", redis_client):
+        with (
+            patch("vehicles.views.redis_client", redis_client),
+            patch("api.views.redis_client", redis_client),
+        ):
             positions = self.client.get("/vehicles.json").json()
             self.assertEqual(positions[0]["datetime"], "2025-10-15T11:16:36+01:00")
             self.assertEqual(positions[1]["datetime"], "2025-10-15T11:16:51+01:00")
             self.assertEqual(positions[2]["datetime"], "2025-10-15T11:13:42+01:00")
 
             journey = VehicleJourney.objects.get(route_name="12")
-            response = self.client.get(f"/journeys/{journey.id}.json")
-            self.assertEqual(2, len(response.json()["locations"]))
+            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
+            self.assertEqual(
+                "~mlL}fgkHe|x||gB|m@tXaJ", response.json()["time_aware_polyline"]
+            )
 
             journey = VehicleJourney.objects.get(route_name="12A")
-            response = self.client.get(f"/journeys/{journey.id}.json")
-            self.assertEqual(2, len(response.json()["locations"]))
+            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
+            self.assertEqual(
+                "r|`LwahkHs|x||gB`mBfKqJ", response.json()["time_aware_polyline"]
+            )
 
             journey = VehicleJourney.objects.get(route_name="15")
-            response = self.client.get(f"/journeys/{journey.id}.json")
-            self.assertEqual(1, len(response.json()["locations"]))
+            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
+            self.assertEqual("ji}KotfkHk|x||gB", response.json()["time_aware_polyline"])

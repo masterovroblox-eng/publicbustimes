@@ -33,8 +33,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
 from django.utils.decorators import method_decorator
 from django.views.generic.detail import DetailView
-import numpy as np
-from haversine import Unit, haversine, haversine_vector
+from haversine import haversine
 from redis.exceptions import ConnectionError
 from sql_util.utils import Exists, SubqueryMax, SubqueryMin
 
@@ -44,11 +43,10 @@ from busstops.models import (
     Operator,
     OperatorGroup,
     Service,
-    StopUsage,
 )
 from busstops.utils import get_bounding_box
-from bustimes.models import Garage, Route, StopTime
-from bustimes.utils import contiguous_stoptimes_only, get_other_trips_in_block
+from bustimes.models import Garage, Route
+from bustimes.utils import get_other_trips_in_block
 from photos.forms import PhotoForm
 from photos.utils import add_flickr_photo
 
@@ -59,7 +57,6 @@ from .models import (
     SiriSubscription,
     Vehicle,
     VehicleJourney,
-    VehicleLocation,
     VehicleRevision,
     VehicleRevisionFeature,
 )
@@ -1081,238 +1078,6 @@ def vehicle_edits(request):
 
 class VehicleJourneyDetailView(DetailView):
     model = VehicleJourney
-
-
-@require_safe
-def journey_json(request, pk, vehicle_id=None, service_id=None):
-    journey = get_object_or_404(
-        VehicleJourney.objects.select_related("trip__route", "vehicle"), pk=pk
-    )
-
-    tzinfo = (
-        journey.trip and journey.trip.route and journey.trip.route.timezone
-    ) or None
-
-    data = {
-        "vehicle_id": journey.vehicle_id,
-        "service_id": journey.service_id,
-        "trip_id": journey.trip_id,
-        "datetime": timezone.localtime(journey.datetime, tzinfo),
-        "route_name": journey.route_name,
-        "code": journey.code,
-        "destination": journey.destination,
-        "direction": journey.direction,
-        "current": journey.vehicle and journey.id == journey.vehicle.latest_journey_id,
-    }
-
-    if redis_client:
-        locations = redis_client and redis_client.lrange(journey.get_redis_key(), 0, -1)
-    else:
-        locations = None
-
-    if locations:
-        locations = [
-            VehicleLocation.decode_appendage(location, tzinfo) for location in locations
-        ]
-        locations.sort(key=lambda location: location["datetime"])
-
-        data["locations"] = []
-
-        stationary = False
-        previous = None
-        previous_coords = None
-        for location in locations:
-            coords = location["coordinates"]
-
-            if previous_coords:
-                dx = coords[0] - previous_coords[0]
-                dy = coords[1] - previous_coords[1]
-                if dx * dx + dy * dy < 2.5e-7:  # 0.0005 degrees squared
-                    stationary = True
-                elif stationary:
-                    # mark end of stationary period
-                    data["locations"].append(previous)
-                    stationary = False
-
-            if not stationary:
-                data["locations"].append(location)
-
-                previous_coords = coords
-
-            previous = location
-
-        if stationary:  # add last location
-            data["locations"].append(location)
-
-        del locations
-
-    # if not trip - calculate using time and first location?
-    # if not trip:
-    #     Trip
-
-    if journey.trip:
-        data["stops"] = []
-        # previous_latlong = None
-
-        trips = journey.trip.get_trips()
-        if trips == [journey.trip]:
-            stoptimes = trips[0].stoptime_set.select_related("stop__locality")
-        else:
-            stoptimes = (
-                StopTime.objects.filter(trip__in=trips)
-                .order_by("trip__start", "id")
-                .select_related("stop__locality")
-            )
-            stoptimes = contiguous_stoptimes_only(stoptimes, journey.trip.id)
-
-        for stoptime in stoptimes:
-            stop = stoptime.stop
-            # if stop := stoptime.stop:
-            #     if stop.latlong:
-            #         if previous_latlong:
-            #             heading = calculate_bearing(previous_latlong, stop.latlong)
-            #         else:
-            #             heading = None
-            #         previous_latlong = stop.latlong
-            data["stops"].append(
-                {
-                    "id": stoptime.id,
-                    "atco_code": stoptime.stop_id,
-                    "name": (
-                        stop.get_name_for_timetable() if stop else stoptime.stop_code
-                    ),
-                    "aimed_arrival_time": stoptime.arrival_time(),
-                    "aimed_departure_time": stoptime.departure_time(),
-                    "minor": stoptime.is_minor(),
-                    "heading": stop and stop.get_heading(),
-                    "coordinates": stop and stop.latlong and stop.latlong.coords,
-                }
-            )
-    elif journey.service_id:
-        stop_usages = StopUsage.objects.filter(
-            service_id=journey.service_id
-        ).select_related("stop__locality")
-        data["stops"] = [
-            {
-                "id": su.id,
-                "atco_code": su.stop_id,
-                "name": su.stop.get_name_for_timetable(),
-                "heading": su.stop.get_heading(),
-                "coordinates": su.stop.latlong and su.stop.latlong.coords,
-                "minor": not su.timing_point,
-                "inbound": su.inbound,
-                "line_name": su.line_name.upper(),
-            }
-            for i, su in enumerate(stop_usages)
-        ]
-        del stop_usages
-
-    if data.get("stops") and data.get("locations"):
-        # filter by line name
-        if "line_name" in data["stops"][0]:
-            line_name = journey.route_name.upper()
-            if any(stop["line_name"] == line_name for stop in data["stops"]):
-                data["stops"] = [
-                    stop for stop in data["stops"] if stop["line_name"] == line_name
-                ]
-
-        # only stops with coordinates
-        stops = [stop for stop in data["stops"] if stop["coordinates"]]
-
-        if stops:
-            stop_coords = [stop["coordinates"][::-1] for stop in stops]
-            vehicle_coords = [
-                location["coordinates"][::-1] for location in data["locations"]
-            ]
-            # pre-build stop headings array for azimuth filtering; NaN = unknown
-            stop_headings = np.array(
-                [s["heading"] if s["heading"] is not None else np.nan for s in stops],
-                dtype=float,
-            )
-            try:
-                haversine_vector_results = haversine_vector(
-                    stop_coords,
-                    vehicle_coords,
-                    Unit.METERS,
-                    comb=True,
-                )
-            except ValueError as e:
-                logging.exception(e)
-            else:
-                for distances, location in zip(
-                    haversine_vector_results, data["locations"]
-                ):
-                    vehicle_heading = location.get("direction")
-                    if vehicle_heading is not None:
-                        # mask stops whose heading differs by ≥ 90° from vehicle
-                        # heading_diff in [0, 180]; NaN headings are always kept
-                        heading_diff = np.abs(
-                            ((stop_headings - vehicle_heading) + 180) % 360 - 180
-                        )
-                        aligned = np.isnan(heading_diff) | (heading_diff < 90)
-                        if aligned.any():
-                            idx = int(np.argmin(np.where(aligned, distances, np.inf)))
-                        else:
-                            idx = int(np.argmin(distances))
-                    else:
-                        idx = int(np.argmin(distances))
-
-                    if distances[idx] < 100:
-                        stops[idx]["actual_departure_time"] = location["datetime"]
-
-            # work out which direction we're going in
-            inbound = datetime.timedelta()
-            outbound = datetime.timedelta()
-            previous = None
-
-            for stop in stops:
-                if "inbound" in stop and "actual_departure_time" in stop:
-                    if previous and previous["inbound"] == stop["inbound"]:
-                        difference = (
-                            stop["actual_departure_time"]
-                            - previous["actual_departure_time"]
-                        )
-                        if stop["inbound"]:
-                            inbound += difference
-                        else:
-                            outbound += difference
-
-                    previous = stop
-
-            # whichever sum-of-differences is bigger is the direction of travel
-            if inbound > outbound:
-                data["stops"] = [stop for stop in data["stops"] if stop["inbound"]]
-            elif inbound < outbound:
-                data["stops"] = [stop for stop in data["stops"] if not stop["inbound"]]
-
-    next_previous_filter = {"date": journey.date}
-    if service_id:
-        next_previous_filter["service_id"] = service_id
-        data["vehicle"] = str(journey.vehicle)
-    else:
-        next_previous_filter["vehicle_id"] = journey.vehicle_id
-
-    try:
-        next_journey = journey.get_next_by_datetime(**next_previous_filter)
-    except VehicleJourney.DoesNotExist:
-        pass
-    else:
-        data["next"] = {
-            "id": next_journey.id,
-            "datetime": timezone.localtime(next_journey.datetime),
-        }
-
-    try:
-        previous_journey = journey.get_previous_by_datetime(**next_previous_filter)
-    except VehicleJourney.DoesNotExist:
-        pass
-    else:
-        data["previous"] = {
-            "id": previous_journey.id,
-            "datetime": timezone.localtime(previous_journey.datetime),
-        }
-
-    return JsonResponse(data)
 
 
 @require_safe

@@ -469,36 +469,23 @@ class BusOpenDataVehicleLocationsTest(TestCase):
         self.assertEqual(journey.destination, "Southwold")
 
         with mock.patch("vehicles.views.redis_client", redis_client):
-            response = self.client.get(f"/journeys/{journey.id}.json")
+            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
         self.maxDiff = None
         self.assertEqual(
             response.json(),
             {
-                "code": "146_20201128_12_58",
-                "current": True,
+                "id": journey.id,
                 "datetime": "2020-11-28T12:58:25Z",
-                "destination": "Southwold",
-                "direction": "inbound",
+                "date": "2020-11-28",
+                "vehicle": {
+                    "id": journey.vehicle_id,
+                    "slug": "none-bb62-bus",
+                    "fleet_code": "104",
+                    "reg": "BB62BUS",
+                },
                 "route_name": "146",
-                "service_id": None,
+                "destination": "Southwold",
                 "trip_id": None,
-                "vehicle_id": journey.vehicle_id,
-                "locations": [
-                    {
-                        "id": 1606568305,
-                        "coordinates": [1.296442985534668, 52.62268829345703],
-                        "datetime": "2020-11-28T12:58:25Z",
-                        "delta": None,
-                        "direction": None,
-                    },
-                    {
-                        "id": 1606576026,
-                        "coordinates": [1.675892949104309, 52.328399658203125],
-                        "datetime": "2020-11-28T15:07:06Z",
-                        "delta": None,
-                        "direction": 142,
-                    },
-                ],
             },
         )
 

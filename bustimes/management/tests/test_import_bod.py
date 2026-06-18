@@ -341,10 +341,10 @@ Lynx/Bus Open Data Service (BODS)</a>, <time datetime="2020-04-01">1 April 2020<
             patch("vehicles.views.redis_client", fake_redis),
             patch("api.views.redis_client", fake_redis),
         ):
-            response = self.client.get(f"/journeys/{journey.id}.json")
+            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
             json = response.json()
-            self.assertIn("stops", json)
-            self.assertNotIn("locations", json)
+            self.assertIn("times", json["trip"])
+            self.assertEqual(json["time_aware_polyline"], "")
 
             # journey locations but no stop locations
             location = VehicleLocation(Point(0.23, 52.729))
@@ -355,23 +355,15 @@ Lynx/Bus Open Data Service (BODS)</a>, <time datetime="2020-04-01">1 April 2020<
 
             fake_redis.rpush(*location.get_appendage())
 
-            response = self.client.get(
-                f"/services/{journey.service_id}/journeys/{journey.id}.json"
-            )
+            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
             json = response.json()
-            self.assertIn("stops", json)
-            self.assertIn("locations", json)
+            self.assertIn("times", json["trip"])
+            self.assertEqual(json["time_aware_polyline"], "o|k@gsy`Ikpyx|{A")
 
             # journey locations and stop location
             StopPoint.objects.filter(atco_code="2900W0314").update(
                 latlong="POINT(0.23 52.729)"
             )
-            response = self.client.get(f"/journeys/{journey.id}.json")
-            json = response.json()
-            self.assertEqual(
-                json["stops"][2]["actual_departure_time"], "2019-05-29T13:03:34+01:00"
-            )
-
             # newer API
             response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
             json = response.json()
