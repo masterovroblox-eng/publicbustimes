@@ -150,7 +150,14 @@ class Locality(SearchMixin, models.Model):
 
     class Meta:
         ordering = ("name",)
-        indexes = [GinIndex(fields=["search_vector"])]
+        indexes = [
+            GinIndex(fields=["search_vector"]),
+            GinIndex(
+                fields=["name"],
+                opclasses=["gin_trgm_ops"],
+                name="locality_name_trgm",
+            ),
+        ]
 
     def __str__(self):
         return self.name or self.id
