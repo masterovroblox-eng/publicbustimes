@@ -24,9 +24,10 @@
             <label>{{ form.vehicles }} {{ form.vehicles.label }}</label>
         {% endif %}
         {% if form.service %}{{ form.service }}{% endif %}
-        <noscript><input type="submit" value="Go"></noscript>
+        <noscript><input type="submit" value="Update"></noscript>
     </form>
-    <noscript>{{ timetable.date }}</noscript>
+
+    {% if timetable.date or timetable.calendar %}<noscript>{{ timetable.date or timetable.calendar }}</noscript>{% endif %}
 
     {% cache timetable.cache_key ~ form.vehicles.value(), 3600 %}
 
