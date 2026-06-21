@@ -208,15 +208,10 @@ class VehiclesTests(TestCase):
         # last seen today - should only show time
         with (
             time_machine.travel("2020-10-20 12:00+01:00"),
-            self.assertNumQueries(4),
+            self.assertNumQueries(3),
             override_settings(ALLOW_VEHICLE_NOTES_OPERATORS=("LYNX",)),
         ):
-            response = self.client.get("/operators/lynx/vehicles?grid=1")
-
-        # calendar grid
-        self.assertContains(
-            response, '<a href="/vehicles/lynx-2?date=2020-10-16">16</a>'
-        )
+            response = self.client.get("/operators/lynx/vehicles")
 
         vehicles = response.context["vehicles"]
         self.assertEqual(vehicles[0].reg, "UWW2X")

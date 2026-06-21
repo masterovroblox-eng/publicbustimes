@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-from collections import defaultdict
 from itertools import pairwise, groupby
 from urllib.parse import unquote
 from functools import partial
@@ -204,16 +203,13 @@ def operator_vehicles(request, slug=None, group_slug=None):
 
     vehicles = vehicles.order_by("fleet_number", "fleet_code", "reg", "code")
 
-    grid: bool = not group and "grid" in request.GET
-
     if group_slug:
         context = {"object": group}
     else:
-        if not grid:
-            vehicles = vehicles.annotate(feature_names=features_string_agg)
-            vehicles = vehicles.annotate(
-                pending_edits=Exists("vehiclerevision", filter=Q(pending=True))
-            )
+        vehicles = vehicles.annotate(feature_names=features_string_agg)
+        vehicles = vehicles.annotate(
+            pending_edits=Exists("vehiclerevision", filter=Q(pending=True))
+        )
         vehicles = vehicles.select_related("latest_journey")
 
         context = {
@@ -237,28 +233,6 @@ def operator_vehicles(request, slug=None, group_slug=None):
     if not group and operator.noc in settings.ALLOW_VEHICLE_NOTES_OPERATORS:
         vehicles = sorted(vehicles, key=lambda v: v.notes)
 
-    # calendar grid view
-    if not group and grid:
-        today = timezone.localdate()
-        dates = [today - datetime.timedelta(days=i) for i in range(14)]
-        context["dates"] = dates
-
-        vehicle_dates = defaultdict(set)
-        for vehicle_id, date in (
-            VehicleJourney.objects.filter(
-                vehicle__in=[v.id for v in vehicles],
-                date__range=(dates[-1], dates[0]),
-            )
-            .values_list("vehicle", "date")
-            .order_by()
-            .distinct()
-            .iterator()
-        ):
-            vehicle_dates[vehicle_id].add(date)
-
-        for v in vehicles:
-            v.dates = [date if date in vehicle_dates[v.id] else None for date in dates]
-
     if group:
         paginator = Paginator(vehicles, 1000)
         page = request.GET.get("page")
@@ -272,10 +246,7 @@ def operator_vehicles(request, slug=None, group_slug=None):
     else:
         paginator = None
 
-        if not grid:
-            context["features_column"] = any(
-                vehicle.feature_names for vehicle in vehicles
-            )
+        context["features_column"] = any(vehicle.feature_names for vehicle in vehicles)
 
     columns = set(key for vehicle in vehicles if vehicle.data for key in vehicle.data)
     for vehicle in vehicles:
