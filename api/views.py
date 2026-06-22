@@ -246,11 +246,13 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                     },
                     "aimed_departure_time": timezone.localtime(
                         datetime.fromisoformat(time)
-                    ).strftime("%H:%M"),
+                    ).strftime("%H:%M")
+                    if time
+                    else None,
                 }
                 for (stop, time) in (
-                    (origin, mvj["OriginAimedDepartureTime"]),
-                    (dest, mvj["DestinationAimedArrivalTime"]),
+                    (origin, mvj.get("OriginAimedDepartureTime")),
+                    (dest, mvj.get("DestinationAimedArrivalTime")),
                 )
             ]
         }
