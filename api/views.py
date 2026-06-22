@@ -340,7 +340,7 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             if not instance.trip:
                 try:
                     extra_data["trip"] = self.times_from_siri(instance)
-                except (KeyError, ValueError):
+                except (TypeError, KeyError, ValueError):
                     pass
 
         if not instance.trip and instance.vehicle.operator:
