@@ -1,5 +1,6 @@
 import logging
 from django_filters.rest_framework import DjangoFilterBackend
+from datetime import datetime
 from rest_framework import pagination, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
@@ -221,6 +222,39 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             if distances[idx] < 100:
                 stops[idx].actual_departure_time = location["datetime"]
 
+    @staticmethod
+    def times_from_siri(instance):
+        mvj = instance.vehicle.latest_journey_data["MonitoredVehicleJourney"]
+        origin = mvj["OriginRef"].upper()
+        dest = mvj["DestinationRef"].upper()
+        stops = {
+            stop.atco_code.upper(): stop
+            for stop in StopPoint.objects.filter(
+                Q(atco_code__iexact=origin) | Q(atco_code__iexact=dest)
+            )
+        }
+        origin = stops[origin]
+        dest = stops[dest]
+        return {
+            "times": [
+                {
+                    "stop": {
+                        "atco_code": stop.atco_code,
+                        "name": stop.get_qualified_name(),
+                        "location": stop.latlong.coords,
+                        "bearing": stop.get_heading(),
+                    },
+                    "aimed_departure_time": timezone.localtime(
+                        datetime.fromisoformat(time)
+                    ).strftime("%H:%M"),
+                }
+                for (stop, time) in (
+                    (origin, mvj["OriginAimedDepartureTime"]),
+                    (dest, mvj["DestinationAimedArrivalTime"]),
+                )
+            ]
+        }
+
     @action(detail=True)
     def details(self, request, pk=None):
         instance = self.get_object()
@@ -300,6 +334,12 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                 stop_times=(instance.trip.stops if instance.trip else None),
                 tzinfo=tzinfo,
             )
+
+            if not instance.trip:
+                try:
+                    extra_data["trip"] = self.times_from_siri(instance)
+                except (KeyError, ValueError):
+                    pass
 
         if not instance.trip and instance.vehicle.operator:
             extra_data["operator"] = {
