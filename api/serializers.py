@@ -177,8 +177,14 @@ class TripSerializer(serializers.ModelSerializer):
     service = serializers.SerializerMethodField()
     operator = serializers.SerializerMethodField()
     times = serializers.SerializerMethodField()
-    notes = NoteSerializer(many=True)
+    notes = serializers.SerializerMethodField()
     headsign = serializers.CharField(source="destination_name")
+
+    @staticmethod
+    def get_notes(obj):
+        if obj.pk:
+            return NoteSerializer(obj.notes.all(), many=True).data
+        return []
 
     @staticmethod
     def get_service(obj):

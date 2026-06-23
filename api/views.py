@@ -1,6 +1,6 @@
 import logging
 from django_filters.rest_framework import DjangoFilterBackend
-from datetime import datetime
+from datetime import datetime, timedelta
 from rest_framework import pagination, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
@@ -222,40 +222,35 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             if distances[idx] < 100:
                 stops[idx].actual_departure_time = location["datetime"]
 
-    @staticmethod
-    def times_from_siri(instance):
-        mvj = instance.vehicle.latest_journey_data["MonitoredVehicleJourney"]
-        origin = mvj["OriginRef"].upper()
-        dest = mvj["DestinationRef"].upper()
-        stops = {
-            stop.atco_code.upper(): stop
-            for stop in StopPoint.objects.filter(
-                Q(atco_code__iexact=origin) | Q(atco_code__iexact=dest)
-            )
-        }
-        origin = stops[origin]
-        dest = stops[dest]
-        return {
-            "times": [
-                {
-                    "stop": {
-                        "atco_code": stop.atco_code,
-                        "name": stop.get_qualified_name(),
-                        "location": stop.latlong.coords,
-                        "bearing": stop.get_heading(),
-                    },
-                    "aimed_departure_time": timezone.localtime(
-                        datetime.fromisoformat(time)
-                    ).strftime("%H:%M")
-                    if time
-                    else None,
-                }
-                for (stop, time) in (
-                    (origin, mvj.get("OriginAimedDepartureTime")),
-                    (dest, mvj.get("DestinationAimedArrivalTime")),
+    def trip_from_siri(self, instance, locations):
+        try:
+            mvj = instance.vehicle.latest_journey_data["MonitoredVehicleJourney"]
+            origin = mvj["OriginRef"].upper()
+            dest = mvj["DestinationRef"].upper()
+            stops = {
+                stop.atco_code.upper(): stop
+                for stop in StopPoint.objects.filter(
+                    Q(atco_code__iexact=origin) | Q(atco_code__iexact=dest)
                 )
-            ]
-        }
+            }
+            origin = stops[origin]
+            dest = stops[dest]
+        except (KeyError, ValueError, TypeError):
+            return
+
+        if start := mvj.get("OriginAimedDepartureTime"):
+            start = timezone.localtime(datetime.fromisoformat(start))
+            start = timedelta(hours=start.hour, minutes=start.minute)
+        if end := mvj.get("DestinationAimedArrivalTime"):
+            end = timezone.localtime(datetime.fromisoformat(end))
+            end = timedelta(hours=end.hour, minutes=end.minute)
+
+        trip = Trip(start=start, end=end)
+        trip.stops = [
+            StopTime(stop=origin, departure=start),
+            StopTime(stop=dest, arrival=end),
+        ]
+        return trip
 
     @action(detail=True)
     def details(self, request, pk=None):
@@ -310,21 +305,12 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             )
             extra_data["time_aware_polyline"] = polyline
 
-        if instance.trip:
-            instance.trip.destination_name = None
-            instance.trip.stops = list(TripViewSet.get_stops(instance.trip))
-            if locations:
-                self.set_actual_departure_times(instance.trip.stops, locations)
-            trip_serializer = serializers.TripSerializer(
-                instance.trip, context={"include_track": False}
-            )
-            extra_data["trip"] = trip_serializer.data
-
         if instance.service_id:
             extra_data["service"] = {
                 "id": instance.service_id,
                 "slug": instance.service.slug,
             }
+
         if (
             locations
             and instance.vehicle_id
@@ -338,10 +324,18 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
             if not instance.trip:
-                try:
-                    extra_data["trip"] = self.times_from_siri(instance)
-                except (TypeError, KeyError, ValueError):
-                    pass
+                instance.trip = self.trip_from_siri(instance, locations)
+
+        if instance.trip:
+            instance.trip.destination_name = None
+            if instance.trip.id:
+                instance.trip.stops = list(TripViewSet.get_stops(instance.trip))
+            if locations:
+                self.set_actual_departure_times(instance.trip.stops, locations)
+            trip_serializer = serializers.TripSerializer(
+                instance.trip, context={"include_track": False}
+            )
+            extra_data["trip"] = trip_serializer.data
 
         if not instance.trip and instance.vehicle.operator:
             extra_data["operator"] = {
