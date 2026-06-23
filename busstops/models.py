@@ -512,7 +512,7 @@ class StopPoint(models.Model):
                         indicator = self.prepositions[indicator]
                     return f"{locality_name}, {indicator} {self.common_name}"
                 return f"{locality_name} {name}"
-        elif self.town not in self.common_name:
+        elif self.town and self.town not in self.common_name:
             return f"{self.town} {name}"
         return name
 
