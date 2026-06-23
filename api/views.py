@@ -225,18 +225,19 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
     def trip_from_siri(self, instance, locations):
         try:
             mvj = instance.vehicle.latest_journey_data["MonitoredVehicleJourney"]
-            origin = mvj["OriginRef"].upper()
-            dest = mvj["DestinationRef"].upper()
+            origin_ref = mvj["OriginRef"].upper()
+            dest_ref = mvj["DestinationRef"].upper()
             stops = {
                 stop.atco_code.upper(): stop
                 for stop in StopPoint.objects.filter(
-                    Q(atco_code__iexact=origin) | Q(atco_code__iexact=dest)
+                    Q(atco_code__iexact=origin_ref) | Q(atco_code__iexact=dest_ref)
                 )
             }
-            origin = stops[origin]
-            dest = stops[dest]
         except (KeyError, ValueError, TypeError):
             return
+
+        origin = stops.get(origin_ref) or StopPoint(common_name=mvj.get("OriginName"))
+        dest = stops.get(dest_ref) or StopPoint(common_name=mvj.get("DestinationName"))
 
         if start := mvj.get("OriginAimedDepartureTime"):
             start = timezone.localtime(datetime.fromisoformat(start))
@@ -311,18 +312,10 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                 "slug": instance.service.slug,
             }
 
-        if (
-            locations
-            and instance.vehicle_id
-            and instance.id == instance.vehicle.latest_journey_id
-        ):
-            extra_data["live"] = get_vehicle_locations(
-                vehicle_ids=[instance.vehicle_id],
-                trip_id=instance.trip_id,
-                stop_times=(instance.trip.stops if instance.trip else None),
-                tzinfo=tzinfo,
-            )
-
+        current_trip = (
+            instance.vehicle_id and instance.id == instance.vehicle.latest_journey_id
+        )
+        if locations and current_trip:
             if not instance.trip:
                 instance.trip = self.trip_from_siri(instance, locations)
 
@@ -336,6 +329,14 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
                 instance.trip, context={"include_track": False}
             )
             extra_data["trip"] = trip_serializer.data
+
+        if locations and current_trip:
+            extra_data["live"] = get_vehicle_locations(
+                vehicle_ids=[instance.vehicle_id],
+                trip_id=instance.trip_id,
+                stop_times=(instance.trip.stops if instance.trip else None),
+                tzinfo=tzinfo,
+            )
 
         if not instance.trip and instance.vehicle.operator:
             extra_data["operator"] = {
