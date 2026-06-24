@@ -445,11 +445,11 @@ function JourneySidebar(props: {
         ) : null}
       </>
     );
-  } else if (journey.operator && journey.route_name) {
+  } else if (_operator && journey.route_name) {
     service = (
       <li>
         <a
-          href={`/services/${journey.operator.noc}:${journey.route_name}/vehicles?date=${journey.date}#journey-${journey.id}`}
+          href={`/services/${_operator.noc}:${journey.route_name}/vehicles?date=${journey.date}#journey-${journey.id}`}
         >
           {journey.route_name}
         </a>
