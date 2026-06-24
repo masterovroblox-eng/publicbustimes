@@ -1421,11 +1421,10 @@ class Command(BaseCommand):
 
             service.save()
 
-            if operators:
-                if existing and not existing_current_service:
-                    service.operator.set(operators.values())
-                else:
-                    service.operator.add(*operators.values())
+            if existing and not existing_current_service:
+                service.operator.set(operators.values())
+            else:
+                service.operator.add(*operators.values())
 
             self.service_ids.add(service.id)
 
