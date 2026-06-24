@@ -246,7 +246,7 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
             end = timezone.localtime(datetime.fromisoformat(end))
             end = timedelta(hours=end.hour, minutes=end.minute)
 
-        trip = Trip(start=start, end=end)
+        trip = Trip(start=start, end=end, operator=instance.vehicle.operator)
         trip.stops = [
             StopTime(stop=origin, departure=start),
             StopTime(stop=dest, arrival=end),
