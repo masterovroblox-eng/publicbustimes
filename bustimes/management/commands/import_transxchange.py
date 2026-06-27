@@ -953,7 +953,7 @@ class Command(BaseCommand):
                         _,
                     ) = VehicleType.objects.get_or_create(
                         code=journey.vehicle_type.code,
-                        description=journey.vehicle_type.description or "",
+                        description=(journey.vehicle_type.description or "")[:100],
                     )
                 trip.vehicle_type = self.vehicle_types[journey.vehicle_type.code]
 
