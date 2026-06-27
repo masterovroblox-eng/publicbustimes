@@ -38,7 +38,8 @@ class Command(ImportLiveVehiclesCommand):
 
     @staticmethod
     def get_journey_identity(item):
-        return
+        # changes when vehicle stops/starts tracking
+        return len(item)
 
     @staticmethod
     def get_item_identity(item):
