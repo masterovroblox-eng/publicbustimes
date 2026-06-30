@@ -254,7 +254,7 @@ class VehicleJourneyViewSet(viewsets.ReadOnlyModelViewSet):
         return trip
 
     @action(detail=True)
-    def details(self, request, pk=None):
+    def details(self, request, pk=None, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
 

@@ -355,7 +355,9 @@ Lynx/Bus Open Data Service (BODS)</a>, <time datetime="2020-04-01">1 April 2020<
 
             fake_redis.rpush(*location.get_appendage())
 
-            response = self.client.get(f"/api/vehiclejourneys/{journey.id}/details/")
+            response = self.client.get(
+                f"/api/vehiclejourneys/{journey.id}/details.json"
+            )
             json = response.json()
             self.assertIn("times", json["trip"])
             self.assertEqual(json["time_aware_polyline"], "o|k@gsy`Ikpyx|{A")
