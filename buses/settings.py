@@ -234,8 +234,8 @@ elif TEST:
 CACHES = {}
 if TEST or DEBUG:
     CACHES["default"] = {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}
-# elif DEBUG or not REDIS_URL:
-#     CACHES["default"] = {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+elif not REDIS_URL:
+    CACHES["default"] = {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
 
 if REDIS_URL and not TEST:
     CACHES["redis"] = {
