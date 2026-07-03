@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: bustimes
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    domains:
+      - sc-north-scotland.cc
+      - www.sc-north-scotland.cc
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: bustimes-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: bustimes.onrender.com sc-north-scotland.cc www.sc-north-scotland.cc
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://bustimes.onrender.com https://sc-north-scotland.cc https://www.sc-north-scotland.cc
+      - key: HUEY_IMMEDIATE
+        value: "true"
+      - key: SENTRY_DSN
+        sync: false
+      - key: STADIA_MAPS_API_KEY
+        sync: false
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 10
+
+  - type: redis
+    name: bustimes-redis
+    ipAllowList: []
+    plan: free

@@ -13,3 +13,7 @@ busstops/management/tests/fixtures/
 bustimes/management/tests/fixtures/
 fares/data/
 fixtures/vcr/
+pgsql/
+.vscode/
+.github/
+postgresql.zip

@@ -157,7 +157,7 @@ REDIS_URL = os.environ.get("REDIS_URL")
 
 HUEY = {
     "name": "bustimes",
-    "immediate": DEBUG or TEST,
+    "immediate": DEBUG or TEST or os.environ.get("HUEY_IMMEDIATE") == "true",
     "connection": {
         "url": REDIS_URL,
     },

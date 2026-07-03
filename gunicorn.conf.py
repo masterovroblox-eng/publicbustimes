@@ -1,5 +1,9 @@
+import os
+
 # loglevel = "debug"
 log_file = "-"
+
+bind = f"0.0.0.0:{os.environ.get('PORT', '8000')}"
 
 worker_tmp_dir = "/dev/shm"
 timeout = 30
