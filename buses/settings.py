@@ -114,11 +114,9 @@ ASGI_APPLICATION = "buses.asgi.application"
 
 
 DATABASES = {
-    "default": dj_database_url.config(
-        conn_max_age=None, conn_health_checks=True,
-        engine="django.contrib.gis.db.backends.postgis",
-    )
+    "default": dj_database_url.config(conn_max_age=None, conn_health_checks=True)
 }
+DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
 
 DATABASES["default"]["OPTIONS"] = {
     "application_name": os.environ.get("APPLICATION_NAME") or " ".join(sys.argv)[-63:],
